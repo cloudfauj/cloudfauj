@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/viper"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -22,21 +24,23 @@ Below is an example command:
 }
 
 func init() {
-	projectCreateCmd.LocalFlags().StringVar(&cfgFile, "config", ".cloudfauj.yml", "Project configuration file")
-	projectCmd.AddCommand(projectCreateCmd)
+	projectCreateCmd.Flags().String("config", ".cloudfauj.yml", "Project configuration file")
 }
 
 func runProjectCreateCmd(cmd *cobra.Command, args []string) {
-	/*
-		1. Collect .cloudfauj.yml, server addr
-		2. Initialize CF server client
-		3. API call
-		4. Display response
-	*/
 	serverAddr, _ := cmd.Flags().GetString("server-addr")
-	fmt.Println(viper.Get("project"))
+	apiClient := api.NewClient(serverAddr)
 
-	fmt.Println(serverAddr)
-	fmt.Println(args)
-	fmt.Println("create called!")
+	configFile, _ := cmd.Flags().GetString("config")
+	initConfig(configFile)
+
+	project := viper.GetString("project")
+	apps := viper.GetStringMap("applications")
+
+	fmt.Printf("Creating project %s\n", project)
+	if err := apiClient.CreateProject(project, apps); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "an error occured while creating project: %v", err)
+		return
+	}
+	fmt.Println("Done")
 }

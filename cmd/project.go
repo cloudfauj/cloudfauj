@@ -16,7 +16,3 @@ in the root directory of the repo.
 
 To get started, you can create a new project.`,
 }
-
-func init() {
-	rootCmd.AddCommand(projectCmd)
-}

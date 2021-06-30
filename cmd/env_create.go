@@ -1,22 +1,9 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/api"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -24,28 +11,33 @@ import (
 // envCreateCmd represents the create command
 var envCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Create new Environment",
+	Long: `This command lets you create a new environment.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
-	},
+An environment is a group of applications that's logically isolated from other
+environments. It is created and managed by a CloudFauj admin.
+
+At least 1 env must exist for an application to be deployed.`,
+	Run: runEnvCreateCmd,
 }
 
 func init() {
-	envCmd.AddCommand(envCreateCmd)
+	envCreateCmd.Flags().String(
+		"config",
+		".cloudfauj-env.yml",
+		"Configuration file to create an environment from",
+	)
+}
 
-	// Here you will define your flags and configuration settings.
+func runEnvCreateCmd(cmd *cobra.Command, args []string) {
+	serverAddr, _ := cmd.Flags().GetString("server-addr")
+	apiClient := api.NewClient(serverAddr)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// envCreateCmd.PersistentFlags().String("foo", "", "A help for foo")
+	configFile, _ := cmd.Flags().GetString("config")
+	initConfig(configFile)
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// envCreateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	if err := apiClient.CreateEnvironment(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "an error occured while creating environment: %v", err)
+		return
+	}
 }

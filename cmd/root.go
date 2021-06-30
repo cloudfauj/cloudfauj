@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
 )
-
-var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "cloudfauj",
@@ -27,39 +24,20 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().String("server-addr", "http://127.0.0.1:5100", "Cloudfauj Server address")
+	projectCmd.AddCommand(projectCreateCmd, projectListCmd)
+	envCmd.AddCommand(envCreateCmd, envDescribeCmd, envListCmd)
+	deploymentCmd.AddCommand(deploymentStatusCmd, deploymentLogsCmd)
+
+	rootCmd.PersistentFlags().String("server-addr", "http://127.0.0.1:6200", "Cloudfauj Server address")
+	rootCmd.AddCommand(serverCmd, projectCmd, envCmd, deployCmd, deploymentCmd)
 }
 
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	}
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err == nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+// initConfig loads configuration into viper from the given file.
+// Because file can differ based on the command invoked, this func
+// is invoked by individual command runners.
+func initConfig(file string) {
+	viper.SetConfigFile(file)
+	if err := viper.ReadInConfig(); err != nil {
+		_ = fmt.Errorf("error while reading configuration: %v", err)
 	}
 }
-
-// initConfig reads in config file and ENV variables if set.
-//func initConfig() {
-//	if cfgFile != "" {
-//		// Use config file from the flag.
-//		viper.SetConfigFile(cfgFile)
-//	} else {
-//		// Find home directory.
-//		home, err := homedir.Dir()
-//		cobra.CheckErr(err)
-//
-//		// Search config in home directory with name ".cloudfauj" (without extension).
-//		viper.AddConfigPath(home)
-//		viper.SetConfigName(".cloudfauj")
-//	}
-//
-//	viper.AutomaticEnv() // read in environment variables that match
-//
-//	// If a config file is found, read it in.
-//	if err := viper.ReadInConfig(); err == nil {
-//		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-//	}
-//}
