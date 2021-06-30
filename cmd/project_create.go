@@ -1,51 +1,42 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 
 	"github.com/spf13/cobra"
 )
 
-// projectCreateCmd represents the create command
 var projectCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Create a new Project",
+	Long: `This command lets you create a new project.
+As a developer, this is the first thing you'd normally do after installing Cloudfauj.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
-	},
+Make sure a .cloudfauj.yml configuration is present in the current directory.
+Below is an example command:
+
+    # Registers the project & its applications with cloudfauj server
+    cloudfauj project create`,
+	Run: runProjectCreateCmd,
 }
 
 func init() {
+	projectCreateCmd.LocalFlags().StringVar(&cfgFile, "config", ".cloudfauj.yml", "Project configuration file")
 	projectCmd.AddCommand(projectCreateCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func runProjectCreateCmd(cmd *cobra.Command, args []string) {
+	/*
+		1. Collect .cloudfauj.yml, server addr
+		2. Initialize CF server client
+		3. API call
+		4. Display response
+	*/
+	serverAddr, _ := cmd.Flags().GetString("server-addr")
+	fmt.Println(viper.Get("project"))
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// projectCreateCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// projectCreateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	fmt.Println(serverAddr)
+	fmt.Println(args)
+	fmt.Println("create called!")
 }

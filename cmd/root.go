@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"os"
 )
 
-//var cfgFile string
+var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "cloudfauj",
@@ -23,19 +26,20 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-//func init() {
-//cobra.OnInitialize(initConfig)
+func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().String("server-addr", "http://127.0.0.1:5100", "Cloudfauj Server address")
+}
 
-// Here you will define your flags and configuration settings.
-// Cobra supports persistent flags, which, if defined here,
-// will be global for your application.
-
-//rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cloudfauj.yaml)")
-
-// Cobra also supports local flags, which will only run
-// when this action is called directly.
-//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-//}
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	}
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err == nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+}
 
 // initConfig reads in config file and ENV variables if set.
 //func initConfig() {
