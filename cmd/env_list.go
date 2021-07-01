@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// envListCmd represents the list command
 var envListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all Environments",
@@ -25,5 +24,7 @@ func runEnvListCmd(cmd *cobra.Command, args []string) {
 		_, _ = fmt.Fprintf(os.Stderr, "an error occured while fetching list of environments: %v", err)
 		return
 	}
-	fmt.Println(res)
+	for name := range res {
+		fmt.Println(name)
+	}
 }

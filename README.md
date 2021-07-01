@@ -1,6 +1,10 @@
 # cloudfauj
 Deploy Apps to your cloud without managing infrastructure
 
+TODO
+- Set Usage command for all commands that use args
+- Handle when required config files are not supplied/present
+
 Find idomatic ways of:
 - how to create api client at top level and pass on to child commands 
 - How to print to stdout

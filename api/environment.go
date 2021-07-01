@@ -1,15 +1,11 @@
 package api
 
-type Environment struct {
-	name string
-}
-
-func (a *API) CreateEnvironment() error {
+func (a *API) CreateEnvironment(name string, config map[string]interface{}) error {
 	return nil
 }
 
-func (a *API) GetEnvironment(name string) (*Environment, error) {
-	return nil, nil
+func (a *API) DestroyEnvironment(name string) error {
+	return nil
 }
 
 func (a *API) ListEnvironments() ([]string, error) {

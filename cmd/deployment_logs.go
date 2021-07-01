@@ -11,13 +11,10 @@ import (
 // deploymentLogsCmd represents the logs command
 var deploymentLogsCmd = &cobra.Command{
 	Use:   "logs",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Fetch deployment logs",
+	Long: `This command displays logs of a deployment.
+Below example fetches logs of a deployment whose ID is "123456":
+    cloudfauj deployment logs 123456`,
 	Run: runDeploymentLogsCmd,
 }
 
@@ -25,10 +22,13 @@ func runDeploymentLogsCmd(cmd *cobra.Command, args []string) {
 	serverAddr, _ := cmd.Flags().GetString("server-addr")
 	apiClient := api.NewClient(serverAddr)
 
-	res, err := apiClient.DeploymentLogs(args[0])
+	logs, err := apiClient.DeploymentLogs(args[0])
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "an error occured while deploying: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "an error occured while fetching deployment logs: %v", err)
 		return
 	}
-	fmt.Println(res)
+	for log := range logs {
+		fmt.Println(log)
+	}
+	fmt.Println("Done")
 }

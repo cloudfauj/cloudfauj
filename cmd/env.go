@@ -4,14 +4,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// envCmd represents the env command
 var envCmd = &cobra.Command{
 	Use:   "env",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Manage Environments",
+	Long: `This command lets you work with Environments managed by Cloudfauj.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+An environment is a group of applications that's logically isolated from other
+environments. Some underlying infrastructure is created by CloudFauj in your
+Cloud in order to support the env, so there's some cost attached to it.
+
+The first thing you'd normally do is to create an environment.`,
 }

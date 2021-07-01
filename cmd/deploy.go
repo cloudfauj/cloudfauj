@@ -11,13 +11,15 @@ import (
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Run a deployment",
-	Long:  "This command asks the cloudfauj server to run a new deployment.",
-	Run:   runDeployCmd,
+	Short: "Deploy an Application",
+	Long: `This command lets you deploy an Application to an environment.
+It returns a Deployment ID that you can use to fetch the status & logs
+of the deployment.`,
+	Run: runDeployCmd,
 }
 
 func init() {
-	deployCmd.Flags().String("config", ".cloudfauj.yml", "Project configuration file")
+	deployCmd.Flags().String("config", ".cloudfauj.yml", "Application configuration file")
 	deployCmd.Flags().String("env", "", "The environment to deploy to")
 	_ = deployCmd.MarkFlagRequired("env")
 }
@@ -30,11 +32,10 @@ func runDeployCmd(cmd *cobra.Command, args []string) {
 	initConfig(configFile)
 
 	targetEnv, _ := cmd.Flags().GetString("env")
-	project := viper.GetString("project")
-	apps := viper.GetStringMap("applications")
+	appName := viper.GetString("name")
 
-	fmt.Printf("Deploying project %s to %s", project, targetEnv)
-	res, err := apiClient.Deploy(project, apps)
+	fmt.Printf("Deploying application %s to %s\n", appName, targetEnv)
+	res, err := apiClient.Deploy(appName, viper.AllSettings())
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "an error occured while deploying: %v", err)
 		return
