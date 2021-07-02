@@ -10,12 +10,18 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
+	Use:   "deploy --env ENV",
 	Short: "Deploy an Application",
-	Long: `This command lets you deploy an Application to an environment.
-It returns a Deployment ID that you can use to fetch the status & logs
-of the deployment.`,
-	Run: runDeployCmd,
+	Long: `
+    This command lets you deploy an Application to an environment.
+
+    By default, it looks for the .cloudfauj.yml file in the current
+    directory as the app configuration.
+
+    It returns a Deployment ID that you can use to fetch the status & logs
+    of the deployment.`,
+	Run:     runDeployCmd,
+	Example: "cloudfauj deploy --env staging",
 }
 
 func init() {

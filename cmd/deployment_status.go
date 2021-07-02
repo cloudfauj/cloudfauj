@@ -9,14 +9,15 @@ import (
 )
 
 var deploymentStatusCmd = &cobra.Command{
-	Use:   "status",
+	Use:   "status [flags] ID",
 	Short: "Get information about a Deployment",
-	Long: `This command displays information about a deployment.
-Among other things, it returns the status of the deployment.
-
-Example:
-    cloudfauj deployment status 123456`,
-	Run: runDeploymentStatusCmd,
+	Long: `
+    This command displays information about a deployment.
+    Among other things, it returns its status.
+    You must specify a deployment ID to fetch the information of.`,
+	Args:    cobra.ExactArgs(1),
+	Run:     runDeploymentStatusCmd,
+	Example: "cloudfauj deployment status 123456",
 }
 
 func runDeploymentStatusCmd(cmd *cobra.Command, args []string) {

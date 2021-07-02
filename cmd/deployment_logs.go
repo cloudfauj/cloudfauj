@@ -10,12 +10,14 @@ import (
 
 // deploymentLogsCmd represents the logs command
 var deploymentLogsCmd = &cobra.Command{
-	Use:   "logs",
+	Use:   "logs [flags] ID",
 	Short: "Fetch deployment logs",
-	Long: `This command displays logs of a deployment.
-Below example fetches logs of a deployment whose ID is "123456":
-    cloudfauj deployment logs 123456`,
-	Run: runDeploymentLogsCmd,
+	Long: `
+    This command displays logs of a deployment.
+    You must specify a deployment ID to fetch logs of.`,
+	Args:    cobra.ExactArgs(1),
+	Run:     runDeploymentLogsCmd,
+	Example: "cloudfauj deployment logs 123456",
 }
 
 func runDeploymentLogsCmd(cmd *cobra.Command, args []string) {

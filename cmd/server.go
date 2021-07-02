@@ -7,10 +7,11 @@ import (
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Launch a Cloudfauj Server",
-	Long: `This command starts a Cloudfauj Server that carries out tasks such
-as Deployments when requested.
-The server takes care of provisioning and managing all infrastructure required
-by the application.`,
+	Long: `
+    This command starts a Cloudfauj Server that carries out tasks such
+    as Deployments when requested.
+    The server takes care of provisioning and managing all infrastructure required
+    by the application.`,
 	Run: runServerCmd,
 }
 

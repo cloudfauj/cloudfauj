@@ -9,13 +9,14 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "cloudfauj",
 	Short: "Deploy Apps to your cloud without managing infrastructure",
-	Long: `CloudFauj enables you to deploy your applications in your own Cloud
-without having to manually provision or manage the infrastructure to support it.
+	Long: `
+    CloudFauj enables you to deploy your applications in your own Cloud
+    without having to manually provision or manage the infrastructure to support it.
 
-If you've just installed cloudfauj, you can start by launching the server.
+    If you've just installed cloudfauj, you can start by launching the server.
 
-If you're a developer and your cloudfauj server is already up & running,
-you can get started with deploying your application.`,
+    If you're a developer and your cloudfauj server is already up & running,
+    you can get started with deploying your application.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

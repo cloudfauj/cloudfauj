@@ -11,8 +11,9 @@ import (
 var envListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all Environments",
-	Long:  "This command returns a list of all Environments managed by Cloudfauj.",
-	Run:   runEnvListCmd,
+	Long: `
+    This command returns a list of all Environments managed by Cloudfauj.`,
+	Run: runEnvListCmd,
 }
 
 func runEnvListCmd(cmd *cobra.Command, args []string) {

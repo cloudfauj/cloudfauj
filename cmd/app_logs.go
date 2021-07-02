@@ -8,12 +8,13 @@ import (
 )
 
 var appLogsCmd = &cobra.Command{
-	Use:   "logs",
+	Use:   "logs [flags] APP",
+	Args:  cobra.ExactArgs(1),
 	Short: "Get Application logs",
-	Long: `This command displays the logs produced by an Application.
-The example below fetches logs for an app called "demo-server":
-    cloudfauj app logs demo-server`,
-	Run: runAppLogsCmd,
+	Long: `
+    This command displays the logs produced by an Application.`,
+	Run:     runAppLogsCmd,
+	Example: "cloudfauj app logs demo-server",
 }
 
 func runAppLogsCmd(cmd *cobra.Command, args []string) {

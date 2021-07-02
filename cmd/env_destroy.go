@@ -9,18 +9,18 @@ import (
 )
 
 var envDestroyCmd = &cobra.Command{
-	Use:   "destroy",
+	Use:   "destroy [flags] ENV",
 	Short: "Destroy an Environment",
-	Long: `This command lets you destroy an environment managed by Cloudfauj.
+	Long: `
+    This command lets you destroy an environment managed by Cloudfauj.
 
-It kills all running applications, cancels deployments and destroys all infrastructure
-of the environment. After destruction, the environment doesn't cost you money anymore.
+    It kills all running applications, cancels deployments and destroys all infrastructure
+    of the environment. After destruction, the environment doesn't cost you money anymore.
 
-This command is idempotent and does nothing if the specified environment doesn't exist.
-
-Below example destroys an environment named "staging":
-    cloudfauj env destroy staging`,
-	Run: runEnvDestroyCmd,
+    This command is idempotent and does nothing if the specified environment doesn't exist.`,
+	Args:    cobra.ExactArgs(1),
+	Run:     runEnvDestroyCmd,
+	Example: "cloudfauj env destroy staging",
 }
 
 func runEnvDestroyCmd(cmd *cobra.Command, args []string) {

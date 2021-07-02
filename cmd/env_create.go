@@ -11,16 +11,18 @@ import (
 
 // envCreateCmd represents the create command
 var envCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create --config PATH",
 	Short: "Create a new Environment",
-	Long: `This command lets you create a new environment.
+	Long: `
+    This command lets you create a new environment.
 
-You must provide a configuration to create the env from.
-This defines the underlying infrastructure to provision to manage resources
-such as DNS, applications, etc.
+    You must provide a configuration to create the env from.
+    The config defines the underlying infrastructure to provision to manage resources
+    such as DNS, applications, etc.
 
-At least 1 env must exist for an application to be deployed.`,
-	Run: runEnvCreateCmd,
+    At least 1 env must exist for an application to be deployed.`,
+	Run:     runEnvCreateCmd,
+	Example: "cloudfauj env create --config ./cloudfauj-env.yml",
 }
 
 func init() {

@@ -7,5 +7,6 @@ import (
 var deploymentCmd = &cobra.Command{
 	Use:   "deployment",
 	Short: "Manage Deployments",
-	Long:  "This command helps you manage and interact with Deployments.",
+	Long: `
+    This command helps you manage and interact with Deployments.`,
 }

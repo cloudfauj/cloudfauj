@@ -11,8 +11,9 @@ import (
 var deploymentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all Deployments",
-	Long:  "This command displays a list of all Deployments active in Cloudfauj",
-	Run:   runDeploymentListCmd,
+	Long: `
+    This command displays a list of all Deployments active in Cloudfauj`,
+	Run: runDeploymentListCmd,
 }
 
 func runDeploymentListCmd(cmd *cobra.Command, args []string) {
