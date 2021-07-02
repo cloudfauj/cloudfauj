@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,10 @@ var envListCmd = &cobra.Command{
 }
 
 func runEnvListCmd(cmd *cobra.Command, args []string) error {
-	apiClient := createApiClient()
+	apiClient, err := api.NewClient(serverAddr)
+	if err != nil {
+		return err
+	}
 
 	res, err := apiClient.ListEnvironments()
 	if err != nil {

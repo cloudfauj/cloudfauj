@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +19,10 @@ var deploymentStatusCmd = &cobra.Command{
 }
 
 func runDeploymentStatusCmd(cmd *cobra.Command, args []string) error {
-	apiClient := createApiClient()
+	apiClient, err := api.NewClient(serverAddr)
+	if err != nil {
+		return err
+	}
 
 	res, err := apiClient.Deployment(args[0])
 	if err != nil {

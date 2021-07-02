@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var serverAddr string
@@ -46,11 +46,7 @@ func init() {
 func initConfig(file string) {
 	viper.SetConfigFile(file)
 	if err := viper.ReadInConfig(); err != nil {
-		_ = fmt.Errorf("error while reading configuration: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "error while reading configuration: %v", err)
+		os.Exit(1)
 	}
-}
-
-// createApiClient returns an api client to interact with a cloudfauj Server
-func createApiClient() *api.API {
-	return api.NewClient(serverAddr)
 }
