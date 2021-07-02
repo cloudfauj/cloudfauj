@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -15,17 +13,18 @@ var deploymentStatusCmd = &cobra.Command{
     Among other things, it returns its status.
     You must specify a deployment ID to fetch the information of.`,
 	Args:    cobra.ExactArgs(1),
-	Run:     runDeploymentStatusCmd,
+	RunE:    runDeploymentStatusCmd,
 	Example: "cloudfauj deployment status 123456",
 }
 
-func runDeploymentStatusCmd(cmd *cobra.Command, args []string) {
+func runDeploymentStatusCmd(cmd *cobra.Command, args []string) error {
 	apiClient := createApiClient()
 
 	res, err := apiClient.Deployment(args[0])
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "an error occured while fetching deployment status: %v", err)
-		return
+		return err
 	}
+
 	fmt.Println(res)
+	return nil
 }

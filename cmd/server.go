@@ -12,12 +12,13 @@ var serverCmd = &cobra.Command{
     as Deployments when requested.
     The server takes care of provisioning and managing all infrastructure required
     by the application.`,
-	Run: runServerCmd,
+	RunE: runServerCmd,
 }
 
-func runServerCmd(cmd *cobra.Command, args []string) {
+func runServerCmd(cmd *cobra.Command, args []string) error {
 	/*
 		1. Load server config file
 		2. Start server and block
 	*/
+	return nil
 }

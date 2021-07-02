@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"os"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var deployCmd = &cobra.Command{
@@ -19,7 +17,7 @@ var deployCmd = &cobra.Command{
 
     It returns a Deployment ID that you can use to fetch the status & logs
     of the deployment.`,
-	Run:     runDeployCmd,
+	RunE:    runDeployCmd,
 	Example: "cloudfauj deploy --env staging",
 }
 
@@ -29,7 +27,7 @@ func init() {
 	_ = deployCmd.MarkFlagRequired("env")
 }
 
-func runDeployCmd(cmd *cobra.Command, args []string) {
+func runDeployCmd(cmd *cobra.Command, args []string) error {
 	apiClient := createApiClient()
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
@@ -40,8 +38,8 @@ func runDeployCmd(cmd *cobra.Command, args []string) {
 	fmt.Printf("Deploying application %s to %s\n", appName, targetEnv)
 	res, err := apiClient.Deploy(appName, viper.AllSettings())
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "an error occured while deploying: %v", err)
-		return
+		return err
 	}
 	fmt.Println(res)
+	return nil
 }

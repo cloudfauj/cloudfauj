@@ -2,13 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"os"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// envCreateCmd represents the create command
 var envCreateCmd = &cobra.Command{
 	Use:   "create --config PATH",
 	Short: "Create a new Environment",
@@ -20,7 +17,7 @@ var envCreateCmd = &cobra.Command{
     such as DNS, applications, etc.
 
     At least 1 env must exist for an application to be deployed.`,
-	Run:     runEnvCreateCmd,
+	RunE:    runEnvCreateCmd,
 	Example: "cloudfauj env create --config ./cloudfauj-env.yml",
 }
 
@@ -29,7 +26,7 @@ func init() {
 	_ = envCreateCmd.MarkFlagRequired("config")
 }
 
-func runEnvCreateCmd(cmd *cobra.Command, args []string) {
+func runEnvCreateCmd(cmd *cobra.Command, args []string) error {
 	apiClient := createApiClient()
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
@@ -38,8 +35,9 @@ func runEnvCreateCmd(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("Creating environment %s\n", envName)
 	if err := apiClient.CreateEnvironment(envName, viper.AllSettings()); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "an error occured while creating the environment: %v", err)
-		return
+		return err
 	}
+
 	fmt.Println("Done")
+	return nil
 }

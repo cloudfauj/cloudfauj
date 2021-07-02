@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -15,20 +13,20 @@ var deploymentLogsCmd = &cobra.Command{
     This command displays logs of a deployment.
     You must specify a deployment ID to fetch logs of.`,
 	Args:    cobra.ExactArgs(1),
-	Run:     runDeploymentLogsCmd,
+	RunE:    runDeploymentLogsCmd,
 	Example: "cloudfauj deployment logs 123456",
 }
 
-func runDeploymentLogsCmd(cmd *cobra.Command, args []string) {
+func runDeploymentLogsCmd(cmd *cobra.Command, args []string) error {
 	apiClient := createApiClient()
 
 	logs, err := apiClient.DeploymentLogs(args[0])
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "an error occured while fetching deployment logs: %v", err)
-		return
+		return err
 	}
 	for log := range logs {
 		fmt.Println(log)
 	}
 	fmt.Println("Done")
+	return nil
 }

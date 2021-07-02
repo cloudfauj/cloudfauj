@@ -22,8 +22,6 @@ var rootCmd = &cobra.Command{
     you can get started with deploying your application.`,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
@@ -35,6 +33,11 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&serverAddr, "server-addr", "http://127.0.0.1:6200", "Cloudfauj Server address")
 	rootCmd.AddCommand(serverCmd, appCmd, envCmd, deployCmd, deploymentCmd)
+
+	// prevent error message showing up twice
+	rootCmd.SilenceErrors = true
+	// Prevent usage from showing up when the command logic returns an error
+	rootCmd.SilenceUsage = true
 }
 
 // initConfig loads configuration into viper from the given file.
