@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -18,8 +17,7 @@ var appLogsCmd = &cobra.Command{
 }
 
 func runAppLogsCmd(cmd *cobra.Command, args []string) {
-	serverAddr, _ := cmd.Flags().GetString("server-addr")
-	apiClient := api.NewClient(serverAddr)
+	apiClient := createApiClient()
 
 	fmt.Printf("Fetching logs for %s...\n", args[0])
 	logs, err := apiClient.Logs(args[0])

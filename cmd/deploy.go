@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/viper"
 	"os"
 
@@ -31,9 +30,7 @@ func init() {
 }
 
 func runDeployCmd(cmd *cobra.Command, args []string) {
-	serverAddr, _ := cmd.Flags().GetString("server-addr")
-	apiClient := api.NewClient(serverAddr)
-
+	apiClient := createApiClient()
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
 

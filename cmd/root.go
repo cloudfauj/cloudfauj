@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var serverAddr string
 
 var rootCmd = &cobra.Command{
 	Use:   "cloudfauj",
@@ -30,7 +33,7 @@ func init() {
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
 	deploymentCmd.AddCommand(deploymentStatusCmd, deploymentLogsCmd, deploymentListCmd)
 
-	rootCmd.PersistentFlags().String("server-addr", "http://127.0.0.1:6200", "Cloudfauj Server address")
+	rootCmd.PersistentFlags().StringVar(&serverAddr, "server-addr", "http://127.0.0.1:6200", "Cloudfauj Server address")
 	rootCmd.AddCommand(serverCmd, appCmd, envCmd, deployCmd, deploymentCmd)
 }
 
@@ -42,4 +45,9 @@ func initConfig(file string) {
 	if err := viper.ReadInConfig(); err != nil {
 		_ = fmt.Errorf("error while reading configuration: %v", err)
 	}
+}
+
+// createApiClient returns an api client to interact with a cloudfauj Server
+func createApiClient() *api.API {
+	return api.NewClient(serverAddr)
 }

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/api"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -24,8 +23,7 @@ var envDestroyCmd = &cobra.Command{
 }
 
 func runEnvDestroyCmd(cmd *cobra.Command, args []string) {
-	serverAddr, _ := cmd.Flags().GetString("server-addr")
-	apiClient := api.NewClient(serverAddr)
+	apiClient := createApiClient()
 
 	fmt.Printf("Destroying environment %s\n", args[0])
 	if err := apiClient.DestroyEnvironment(args[0]); err != nil {
