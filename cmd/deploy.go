@@ -20,10 +20,7 @@ var deployCmd = &cobra.Command{
     As of today, the only type of application supported is a Docker
     container running a TCP server.
     The value of ARTIFACT must be the URI of a docker image residing
-    in AWS ECR. 
-
-    This command returns a Deployment ID that you can use to fetch the status
-    and logs of the deployment.`,
+    in AWS ECR.`,
 	RunE:    runDeployCmd,
 	Example: "cloudfauj deploy --env staging 123456789012.dkr.ecr.us-east-1.amazonaws.com/demo-server:v1.0.0",
 }
@@ -32,6 +29,7 @@ func init() {
 	deployCmd.Flags().String("config", ".cloudfauj.yml", "Application configuration file")
 	deployCmd.Flags().String("env", "", "The environment to deploy to")
 	_ = deployCmd.MarkFlagRequired("env")
+	_ = viper.BindPFlag("target_env", deployCmd.Flags().Lookup("env"))
 }
 
 func runDeployCmd(cmd *cobra.Command, args []string) error {
@@ -42,15 +40,21 @@ func runDeployCmd(cmd *cobra.Command, args []string) error {
 
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
+	viper.Set("artifact", args[0])
 
-	targetEnv, _ := cmd.Flags().GetString("env")
-	appName := viper.GetString("name")
-
-	fmt.Printf("Deploying %s (%s) to %s\n", appName, args[0], targetEnv)
-	res, err := apiClient.Deploy(args[0], viper.AllSettings())
+	fmt.Printf("Deploying %s (%s) to %s\n", viper.GetString("name"), args[0], viper.GetString("target_env"))
+	eventsCh, err := apiClient.Deploy(cmd.Context(), viper.AllSettings())
 	if err != nil {
 		return err
 	}
-	fmt.Println(res)
+
+	fmt.Println("Streaming deployment logs from server...")
+	for e := range eventsCh {
+		if e.Err != nil {
+			return e.Err
+		}
+		fmt.Println(e.Message)
+	}
+
 	return nil
 }

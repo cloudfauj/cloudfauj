@@ -23,7 +23,7 @@ func runAppLogsCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Fetching logs for %s...\n", args[0])
-	logs, err := apiClient.Logs(args[0])
+	logs, err := apiClient.AppLogs(args[0])
 	if err != nil {
 		return err
 	}
