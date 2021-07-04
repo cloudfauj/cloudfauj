@@ -28,9 +28,8 @@ func runDeploymentLogsCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for log := range logs {
+	for _, log := range logs {
 		fmt.Println(log)
 	}
-	fmt.Println("Done")
 	return nil
 }
