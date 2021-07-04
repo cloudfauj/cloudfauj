@@ -45,7 +45,7 @@ func runDeployCmd(cmd *cobra.Command, args []string) error {
 	viper.Set("target_env", targetEnv)
 
 	fmt.Printf("Deploying %s (%s) to %s\n", viper.GetString("name"), args[0], targetEnv)
-	eventsCh, err := apiClient.Deploy(cmd.Context(), viper.AllSettings())
+	eventsCh, err := apiClient.Deploy(viper.AllSettings())
 	if err != nil {
 		return err
 	}

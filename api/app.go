@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -10,7 +9,7 @@ import (
 
 // Deploy requests the server to deploy an application.
 // It streams all the deployment logs.
-func (a *API) Deploy(ctx context.Context, appSpec map[string]interface{}) (<-chan *DeploymentEvent, error) {
+func (a *API) Deploy(appSpec map[string]interface{}) (<-chan *DeploymentEvent, error) {
 	eventsCh := make(chan *DeploymentEvent)
 
 	conn, _, err := a.WsDialer.Dial(a.constructWsURL("/app/deploy"), nil)
