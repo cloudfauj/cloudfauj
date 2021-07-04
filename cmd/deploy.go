@@ -29,7 +29,6 @@ func init() {
 	deployCmd.Flags().String("config", ".cloudfauj.yml", "Application configuration file")
 	deployCmd.Flags().String("env", "", "The environment to deploy to")
 	_ = deployCmd.MarkFlagRequired("env")
-	_ = viper.BindPFlag("target_env", deployCmd.Flags().Lookup("env"))
 }
 
 func runDeployCmd(cmd *cobra.Command, args []string) error {
@@ -42,7 +41,10 @@ func runDeployCmd(cmd *cobra.Command, args []string) error {
 	initConfig(configFile)
 	viper.Set("artifact", args[0])
 
-	fmt.Printf("Deploying %s (%s) to %s\n", viper.GetString("name"), args[0], viper.GetString("target_env"))
+	targetEnv, _ := cmd.Flags().GetString("env")
+	viper.Set("target_env", targetEnv)
+
+	fmt.Printf("Deploying %s (%s) to %s\n", viper.GetString("name"), args[0], targetEnv)
 	eventsCh, err := apiClient.Deploy(cmd.Context(), viper.AllSettings())
 	if err != nil {
 		return err
