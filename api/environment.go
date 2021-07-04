@@ -17,7 +17,7 @@ func (a *API) DestroyEnvironment(name string) error {
 func (a *API) ListEnvironments() ([]string, error) {
 	var result []string
 
-	res, err := a.HttpClient.Get(a.constructHttpURL("/environments"))
+	res, err := a.HttpClient.Get(a.constructHttpURL("/environments", nil))
 	if err != nil {
 		return nil, err
 	}

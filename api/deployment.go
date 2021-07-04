@@ -13,10 +13,15 @@ type Deployment struct {
 	Status      string `json:"status"`
 }
 
+type DeploymentEvent struct {
+	Message string
+	Err     error
+}
+
 func (a *API) Deployment(id string) (*Deployment, error) {
 	var result Deployment
 
-	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/" + id))
+	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/"+id, nil))
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +39,7 @@ func (a *API) Deployment(id string) (*Deployment, error) {
 func (a *API) DeploymentLogs(id string) ([]string, error) {
 	var result []string
 
-	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/" + id + "/logs"))
+	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/"+id+"/logs", nil))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +57,7 @@ func (a *API) DeploymentLogs(id string) ([]string, error) {
 func (a *API) ListDeployments() ([]*Deployment, error) {
 	var result []*Deployment
 
-	res, err := a.HttpClient.Get(a.constructHttpURL("/deployments"))
+	res, err := a.HttpClient.Get(a.constructHttpURL("/deployments", nil))
 	if err != nil {
 		return nil, err
 	}
