@@ -15,7 +15,7 @@ func (a *API) DestroyEnvironment(name string) error {
 }
 
 func (a *API) ListEnvironments() ([]string, error) {
-	var data []string
+	var result []string
 
 	res, err := a.HttpClient.Get(a.constructHttpURL("/environments"))
 	if err != nil {
@@ -26,8 +26,8 @@ func (a *API) ListEnvironments() ([]string, error) {
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("server returned %d: %v", res.StatusCode, err)
 	}
-	if err = json.NewDecoder(res.Body).Decode(&data); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode server response: %v", err)
 	}
-	return data, nil
+	return result, nil
 }

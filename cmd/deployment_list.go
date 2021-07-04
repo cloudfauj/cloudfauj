@@ -24,8 +24,14 @@ func runDeploymentListCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for d := range res {
-		fmt.Println(d)
+	for _, d := range res {
+		desc := `ID: %s
+    App: %s
+    Target Env %s
+    Status: %s
+
+`
+		fmt.Printf(desc, d.Id, d.App, d.Environment, d.Status)
 	}
 	return nil
 }
