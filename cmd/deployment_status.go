@@ -24,11 +24,18 @@ func runDeploymentStatusCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	res, err := apiClient.Deployment(args[0])
+	d, err := apiClient.Deployment(args[0])
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(res)
+	desc := `
+    ID:         %s
+    App:        %s
+    Target Env: %s
+    Status:     %s
+
+`
+	fmt.Printf(desc, d.Id, d.App, d.Environment, d.Status)
 	return nil
 }

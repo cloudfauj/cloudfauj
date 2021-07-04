@@ -26,9 +26,9 @@ func runDeploymentListCmd(cmd *cobra.Command, args []string) error {
 	}
 	for _, d := range res {
 		desc := `ID: %s
-    App: %s
-    Target Env %s
-    Status: %s
+    App:        %s
+    Target Env: %s
+    Status:     %s
 
 `
 		fmt.Printf(desc, d.Id, d.App, d.Environment, d.Status)

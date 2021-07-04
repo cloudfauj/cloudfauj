@@ -14,7 +14,21 @@ type Deployment struct {
 }
 
 func (a *API) Deployment(id string) (*Deployment, error) {
-	return nil, nil
+	var result Deployment
+
+	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/" + id))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned %d: %v", res.StatusCode, err)
+	}
+	if err = json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode server response: %v", err)
+	}
+	return &result, nil
 }
 
 func (a *API) DeploymentLogs(id string) ([]string, error) {
