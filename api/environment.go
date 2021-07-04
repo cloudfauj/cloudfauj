@@ -11,6 +11,21 @@ func (a *API) CreateEnvironment(name string, config map[string]interface{}) erro
 }
 
 func (a *API) DestroyEnvironment(name string) error {
+	u := a.constructHttpURL("/environment/"+name, nil)
+	req, err := http.NewRequest(http.MethodDelete, u, nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := a.HttpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned %d: %v", res.StatusCode, err)
+	}
 	return nil
 }
 

@@ -13,7 +13,8 @@ var envDestroyCmd = &cobra.Command{
     This command lets you destroy an environment managed by Cloudfauj.
 
     It kills all running applications, cancels deployments and destroys all infrastructure
-    of the environment. After destruction, the environment doesn't cost you money anymore.
+    of the environment. The command returns immediately with an acknowledgement.
+    The process of destruction takes place in the background.
 
     This command is idempotent and does nothing if the specified environment doesn't exist.`,
 	Args:    cobra.ExactArgs(1),
@@ -27,11 +28,10 @@ func runEnvDestroyCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Destroying environment %s\n", args[0])
 	if err := apiClient.DestroyEnvironment(args[0]); err != nil {
 		return err
 	}
+	fmt.Printf("Environment %s has been queued for destruction\n", args[0])
 
-	fmt.Println("Done")
 	return nil
 }
