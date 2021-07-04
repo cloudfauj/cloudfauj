@@ -24,7 +24,7 @@ func runEnvListCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for name := range res {
+	for _, name := range res {
 		fmt.Println(name)
 	}
 	return nil

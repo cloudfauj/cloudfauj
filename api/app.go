@@ -16,7 +16,7 @@ type DeploymentEvent struct {
 func (a *API) Deploy(ctx context.Context, appSpec map[string]interface{}) (<-chan *DeploymentEvent, error) {
 	eventsCh := make(chan *DeploymentEvent)
 
-	conn, _, err := a.WsDialer.Dial(a.serverWebsocketURL("/app/deploy"), nil)
+	conn, _, err := a.WsDialer.Dial(a.constructWsURL("/app/deploy"), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish websocket connection with server: %v", err)
 	}

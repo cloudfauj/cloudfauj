@@ -31,7 +31,12 @@ func init() {
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
 	deploymentCmd.AddCommand(deploymentStatusCmd, deploymentLogsCmd, deploymentListCmd)
 
-	rootCmd.PersistentFlags().StringVar(&serverAddr, "server-addr", "http://127.0.0.1:6200", "Cloudfauj Server address")
+	rootCmd.PersistentFlags().StringVar(
+		&serverAddr,
+		"server-addr",
+		"http://127.0.0.1:6200",
+		"HTTP address of Cloudfauj Server, including the Scheme",
+	)
 	rootCmd.AddCommand(serverCmd, appCmd, envCmd, deployCmd, deploymentCmd)
 
 	// prevent error message showing up twice

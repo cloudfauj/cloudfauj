@@ -5,7 +5,5 @@ import (
 )
 
 func main() {
-	// TODO: Create & supply api client from here instead of
-	//  creating them in the specific sub-commands.
 	cmd.Execute()
 }
