@@ -15,6 +15,11 @@ var serverCmd = &cobra.Command{
 	RunE: runServerCmd,
 }
 
+func init() {
+	serverCmd.Flags().String("config", "", "Server configuration file")
+	_ = serverCmd.MarkFlagRequired("config")
+}
+
 func runServerCmd(cmd *cobra.Command, args []string) error {
 	/*
 		1. Load server config file

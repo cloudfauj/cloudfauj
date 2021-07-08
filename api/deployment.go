@@ -13,11 +13,6 @@ type Deployment struct {
 	Status      string `json:"status"`
 }
 
-type DeploymentEvent struct {
-	Message string
-	Err     error
-}
-
 func (a *API) Deployment(id string) (*Deployment, error) {
 	var result Deployment
 

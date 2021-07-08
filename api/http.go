@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"github.com/gorilla/websocket"
 	"net/url"
 	"path"
 )
@@ -27,4 +29,40 @@ func (a *API) constructURL(s, p string, q queryParams) string {
 		u.RawQuery = original.Encode()
 	}
 	return u.String()
+}
+
+func (a *API) makeWebsocketRequest(u string, payload map[string]interface{}) (<-chan *ServerEvent, error) {
+	eventsCh := make(chan *ServerEvent)
+
+	conn, _, err := a.WsDialer.Dial(u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to establish websocket connection with server: %v", err)
+	}
+
+	go func(conn *websocket.Conn, respCh chan<- *ServerEvent) {
+		defer conn.Close()
+		defer close(respCh)
+
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				// unless an error has occurred due to normal connection closure
+				// from server, it needs to propagate.
+				if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					respCh <- &ServerEvent{
+						Err: fmt.Errorf("unexpected error from server: %v", err),
+					}
+				}
+				break
+			}
+			respCh <- &ServerEvent{Message: string(msg)}
+		}
+	}(conn, eventsCh)
+
+	if payload != nil {
+		if err = conn.WriteJSON(payload); err != nil {
+			return nil, fmt.Errorf("failed to send data to server: %v", err)
+		}
+	}
+	return eventsCh, nil
 }

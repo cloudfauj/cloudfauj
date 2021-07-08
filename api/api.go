@@ -17,6 +17,13 @@ type API struct {
 	baseURL    *url.URL
 }
 
+// ServerEvent is a single event created by the cloudfauj server.
+// It can describe the event itself or an error that occured due to it.
+type ServerEvent struct {
+	Message string
+	Err     error
+}
+
 // NewClient returns a new, initialized client to interact with a Cloudfauj Server.
 func NewClient(serverAddr string) (*API, error) {
 	// the baseURL we set must always contain at least scheme & hostname
