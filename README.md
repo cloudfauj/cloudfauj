@@ -1,5 +1,5 @@
 # cloudfauj
-Deploy Apps to your cloud without managing infrastructure
+Automated Infrastructure provisioning in your own cloud
 
 TODO
 - (evaluate) CLI: both create & destroy env should stream logs and display to user.
