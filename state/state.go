@@ -2,11 +2,14 @@ package state
 
 import (
 	"context"
+	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/sirupsen/logrus"
 )
 
 type State interface {
-	CreateEnvironment(ctx context.Context) error
+	CheckEnvExists(context.Context, string) (bool, error)
+	CreateEnvironment(context.Context, *environment.Environment) error
+	UpdateEnvironment(context.Context, *environment.Environment) error
 }
 
 type state struct {

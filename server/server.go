@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/cloudfauj/cloudfauj/state"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -12,9 +13,10 @@ import (
 type Config struct{}
 
 type server struct {
-	config *Config
-	log    *logrus.Logger
-	state  state.State
+	config     *Config
+	log        *logrus.Logger
+	state      state.State
+	wsUpgrader *websocket.Upgrader
 	*mux.Router
 }
 
@@ -22,10 +24,11 @@ const ApiV1Prefix = "/v1"
 
 func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
 	srv := &server{
-		config: c,
-		log:    l,
-		state:  s,
-		Router: mux.NewRouter(),
+		config:     c,
+		log:        l,
+		state:      s,
+		wsUpgrader: &websocket.Upgrader{},
+		Router:     mux.NewRouter(),
 	}
 	setupV1Routes(srv)
 	return srv
@@ -46,6 +49,13 @@ func setupV1Routes(s *server) {
 	depR.HandleFunc("/{id}/logs", s.handlerGetDeploymentLogs).Methods(http.MethodGet)
 
 	envR := r.PathPrefix("/environment").Subrouter()
-	envR.HandleFunc("/{name}/create", s.handlerCreateEnv)
+	envR.HandleFunc("/create", s.handlerCreateEnv)
 	envR.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
+}
+
+func sendWSClosureMsg(conn *websocket.Conn, code int) error {
+	return conn.WriteMessage(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(code, ""),
+	)
 }

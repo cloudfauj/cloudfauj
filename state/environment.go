@@ -1,7 +1,18 @@
 package state
 
-import "context"
+import (
+	"context"
+	"github.com/cloudfauj/cloudfauj/environment"
+)
 
-func (s *state) CreateEnvironment(ctx context.Context) error {
+func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
+	return false, nil
+}
+
+func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environment) error {
+	return nil
+}
+
+func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environment) error {
 	return nil
 }

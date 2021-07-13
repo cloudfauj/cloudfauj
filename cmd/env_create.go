@@ -38,7 +38,7 @@ func runEnvCreateCmd(cmd *cobra.Command, args []string) error {
 	envName := viper.GetString("name")
 
 	fmt.Printf("Requesting creation of %s\n", envName)
-	eventsCh, err := apiClient.CreateEnvironment(envName, viper.AllSettings())
+	eventsCh, err := apiClient.CreateEnvironment(viper.AllSettings())
 	if err != nil {
 		return err
 	}

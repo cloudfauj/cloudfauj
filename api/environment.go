@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-func (a *API) CreateEnvironment(name string, config map[string]interface{}) (<-chan *ServerEvent, error) {
-	return a.makeWebsocketRequest(a.constructWsURL("/environment/"+name+"/create"), config)
+func (a *API) CreateEnvironment(config map[string]interface{}) (<-chan *ServerEvent, error) {
+	return a.makeWebsocketRequest(a.constructWsURL("/environment/create"), config)
 }
 
 func (a *API) DestroyEnvironment(name string) (<-chan *ServerEvent, error) {

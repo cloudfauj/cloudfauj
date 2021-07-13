@@ -48,9 +48,9 @@ func (a *API) makeWebsocketRequest(u string, payload map[string]interface{}) (<-
 			if err != nil {
 				// unless an error has occurred due to normal connection closure
 				// from server, it needs to propagate.
-				if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					respCh <- &ServerEvent{
-						Err: fmt.Errorf("unexpected error from server: %v", err),
+						Err: fmt.Errorf("server error: %v", err),
 					}
 				}
 				break
