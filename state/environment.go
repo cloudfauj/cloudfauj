@@ -16,3 +16,7 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environment) error {
 	return nil
 }
+
+func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
+	return []string{}, nil
+}

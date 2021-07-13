@@ -1,12 +1,24 @@
 package server
 
 import (
+	"encoding/json"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/gorilla/websocket"
 	"net/http"
 )
 
-func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request) {}
+func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request) {
+	res, err := s.state.ListEnvironments(r.Context())
+	if err != nil {
+		s.log.Errorf("Failed to list environments from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonRes, _ := json.Marshal(res)
+	_, _ = w.Write(jsonRes)
+}
 
 func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)

@@ -10,6 +10,7 @@ type State interface {
 	CheckEnvExists(context.Context, string) (bool, error)
 	CreateEnvironment(context.Context, *environment.Environment) error
 	UpdateEnvironment(context.Context, *environment.Environment) error
+	ListEnvironments(context.Context) ([]string, error)
 }
 
 type state struct {
