@@ -11,6 +11,8 @@ type State interface {
 	CreateEnvironment(context.Context, *environment.Environment) error
 	UpdateEnvironment(context.Context, *environment.Environment) error
 	ListEnvironments(context.Context) ([]string, error)
+	GetEnvironment(context.Context, string) (*environment.Environment, error)
+	DeleteEnvironment(context.Context, string) error
 }
 
 type state struct {

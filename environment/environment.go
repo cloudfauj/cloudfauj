@@ -1,10 +1,13 @@
 package environment
 
-import "context"
+import (
+	"context"
+)
 
 const (
 	StatusProvisioning = "provisioning"
 	StatusProvisioned  = "provisioned"
+	StatusDestroying   = "destroying"
 )
 
 type Environment struct {
@@ -24,5 +27,9 @@ func (e *Environment) CheckIsValid() error {
 }
 
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
+	close(eventsCh)
+}
+
+func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 	close(eventsCh)
 }

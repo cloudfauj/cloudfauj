@@ -20,3 +20,12 @@ func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environmen
 func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
 	return []string{}, nil
 }
+
+func (s *state) GetEnvironment(ctx context.Context, name string) (*environment.Environment, error) {
+	// return nil if env doesn't exist
+	return nil, nil
+}
+
+func (s *state) DeleteEnvironment(context.Context, string) error {
+	return nil
+}
