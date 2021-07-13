@@ -3,18 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/deployment"
 	"net/http"
 )
 
-type Deployment struct {
-	Id          string `json:"id"`
-	App         string `json:"app"`
-	Environment string `json:"environment"`
-	Status      string `json:"status"`
-}
-
-func (a *API) Deployment(id string) (*Deployment, error) {
-	var result Deployment
+func (a *API) Deployment(id string) (*deployment.Deployment, error) {
+	var result deployment.Deployment
 
 	res, err := a.HttpClient.Get(a.constructHttpURL("/deployment/"+id, nil))
 	if err != nil {
@@ -49,8 +43,8 @@ func (a *API) DeploymentLogs(id string) ([]string, error) {
 	return result, nil
 }
 
-func (a *API) ListDeployments() ([]*Deployment, error) {
-	var result []*Deployment
+func (a *API) ListDeployments() ([]*deployment.Deployment, error) {
+	var result []*deployment.Deployment
 
 	res, err := a.HttpClient.Get(a.constructHttpURL("/deployments", nil))
 	if err != nil {

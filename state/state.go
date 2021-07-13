@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/sirupsen/logrus"
 )
@@ -13,6 +14,8 @@ type State interface {
 	ListEnvironments(context.Context) ([]string, error)
 	GetEnvironment(context.Context, string) (*environment.Environment, error)
 	DeleteEnvironment(context.Context, string) error
+
+	GetDeployment(context.Context, string) (*deployment.Deployment, error)
 }
 
 type state struct {
