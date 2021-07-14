@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/gorilla/mux"
 	"io/fs"
 	"io/ioutil"
@@ -52,4 +53,15 @@ func (s *server) handlerGetDeploymentLogs(w http.ResponseWriter, r *http.Request
 	_, _ = w.Write(jsonRes)
 }
 
-func (s *server) handlerListDeployments(w http.ResponseWriter, r *http.Request) {}
+func (s *server) handlerListDeployments(w http.ResponseWriter, r *http.Request) {
+	res, err := s.state.ListDeployments(r.Context(), deployment.StatusCreated, deployment.StatusOngoing)
+	if err != nil {
+		s.log.Errorf("Failed to list deployments from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonRes, _ := json.Marshal(res)
+	_, _ = w.Write(jsonRes)
+}

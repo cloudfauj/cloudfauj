@@ -16,6 +16,7 @@ type State interface {
 	DeleteEnvironment(context.Context, string) error
 
 	GetDeployment(context.Context, string) (*deployment.Deployment, error)
+	ListDeployments(context.Context, ...string) ([]*deployment.Deployment, error)
 }
 
 type state struct {
