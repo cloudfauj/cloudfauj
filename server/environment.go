@@ -87,7 +87,7 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
 	defer conn.Close()
 
-	env, err := s.state.GetEnvironment(r.Context(), envName)
+	env, err := s.state.Environment(r.Context(), envName)
 	if err != nil {
 		s.log.Errorf("Failed to fetch env: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)

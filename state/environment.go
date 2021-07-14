@@ -21,7 +21,7 @@ func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *state) GetEnvironment(ctx context.Context, name string) (*environment.Environment, error) {
+func (s *state) Environment(ctx context.Context, name string) (*environment.Environment, error) {
 	// return nil if env doesn't exist
 	return nil, nil
 }

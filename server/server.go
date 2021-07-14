@@ -8,9 +8,14 @@ import (
 	"net/http"
 )
 
-// todo: evaluate whether we even need this
 // config fields should be public
-type Config struct{}
+type Config struct {
+	// DataDir is the base directory inside which Cloudfauj server
+	// stores all its data.
+	// To restore Cloudfauj server on to a new server, restoring a
+	// backup of this dir and running the server is enough.
+	DataDir string `mapstructure:"data_dir"`
+}
 
 type server struct {
 	config     *Config
@@ -21,6 +26,11 @@ type server struct {
 }
 
 const ApiV1Prefix = "/v1"
+
+const (
+	DeploymentsDir  = "deployments"
+	LogFileBasename = "logs.txt"
+)
 
 func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
 	srv := &server{
