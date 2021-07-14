@@ -28,8 +28,10 @@ type server struct {
 const ApiV1Prefix = "/v1"
 
 const (
-	DeploymentsDir  = "deployments"
-	LogFileBasename = "logs.txt"
+	DeploymentsDir     = "deployments"
+	ApplicationsDir    = "applications"
+	ApplicationsEnvDir = "env"
+	LogFileBasename    = "logs.txt"
 )
 
 func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
