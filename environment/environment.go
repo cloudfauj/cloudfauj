@@ -11,8 +11,13 @@ const (
 )
 
 type Environment struct {
-	Name   string `json:"name"`
-	Status string
+	Name   string     `json:"name"`
+	Status string     `json:"status"`
+	Res    *Resources `json:"resources"`
+}
+
+type Resources struct {
+	ECSCluster string `json:"ecs_cluster"`
 }
 
 type Event struct {
@@ -26,10 +31,11 @@ func (e *Environment) CheckIsValid() error {
 	return nil
 }
 
-func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
-	close(eventsCh)
+func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event, resCh chan<- *Resources) {
+	defer close(eventsCh)
+	defer close(resCh)
 }
 
 func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
-	close(eventsCh)
+	defer close(eventsCh)
 }

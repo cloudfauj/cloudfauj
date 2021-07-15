@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/api"
+	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -35,10 +36,11 @@ func runEnvCreateCmd(cmd *cobra.Command, args []string) error {
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
 
-	envName := viper.GetString("name")
+	var env environment.Environment
+	_ = viper.Unmarshal(&env)
 
-	fmt.Printf("Requesting creation of %s\n", envName)
-	eventsCh, err := apiClient.CreateEnvironment(viper.AllSettings())
+	fmt.Printf("Requesting creation of %s\n", env.Name)
+	eventsCh, err := apiClient.CreateEnvironment(&env)
 	if err != nil {
 		return err
 	}

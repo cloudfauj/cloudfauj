@@ -59,7 +59,8 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventsCh := make(chan environment.Event)
-	go env.Provision(r.Context(), eventsCh)
+	resCh := make(chan *environment.Resources, 1)
+	go env.Provision(r.Context(), eventsCh, resCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -72,6 +73,8 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env.Status = environment.StatusProvisioned
+	env.Res = <-resCh
+
 	if err := s.state.UpdateEnvironment(r.Context(), &env); err != nil {
 		s.log.Errorf("Failed to update env info in state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)

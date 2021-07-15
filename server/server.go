@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/cloudfauj/cloudfauj/state"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -17,9 +18,16 @@ type Config struct {
 	DataDir string `mapstructure:"data_dir"`
 }
 
+// Event represent a server event
+type Event struct {
+	Msg string
+	Err error
+}
+
 type server struct {
 	config     *Config
 	log        *logrus.Logger
+	infra      *infrastructure.Infrastructure
 	state      state.State
 	wsUpgrader *websocket.Upgrader
 	*mux.Router
@@ -38,6 +46,7 @@ func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
 	srv := &server{
 		config:     c,
 		log:        l,
+		infra:      infrastructure.New(),
 		state:      s,
 		wsUpgrader: &websocket.Upgrader{},
 		Router:     mux.NewRouter(),
@@ -70,4 +79,8 @@ func sendWSClosureMsg(conn *websocket.Conn, code int) error {
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(code, ""),
 	)
+}
+
+func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

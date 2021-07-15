@@ -2,6 +2,9 @@
 Automated Infrastructure provisioning in your own cloud
 
 TODO
+
+- revisit: we may not need the whole app logs command & its backend right now, we can just ship logs to cloudwatch
+
 - read up on websocket & gorilla lib
 
 - should app logs be from very beginning or only beginning of latest deployment?

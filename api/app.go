@@ -3,13 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/deployment"
 	"net/http"
 )
 
 // Deploy requests the server to deploy an application.
 // It streams all the deployment logs.
-func (a *API) Deploy(appSpec map[string]interface{}) (<-chan *ServerEvent, error) {
-	return a.makeWebsocketRequest(a.constructWsURL("/app/deploy"), appSpec)
+func (a *API) Deploy(spec *deployment.Spec) (<-chan *ServerEvent, error) {
+	m, _ := json.Marshal(spec)
+	return a.makeWebsocketRequest(a.constructWsURL("/app/deploy"), m)
 }
 
 func (a *API) AppLogs(app, env string) ([]string, error) {

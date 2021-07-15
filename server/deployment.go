@@ -15,7 +15,7 @@ import (
 func (s *server) handlerGetDeployment(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
-	d, err := s.state.GetDeployment(r.Context(), id)
+	d, err := s.state.Deployment(r.Context(), id)
 	if err != nil {
 		s.log.Errorf("Failed to fetch deployment from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -54,7 +54,7 @@ func (s *server) handlerGetDeploymentLogs(w http.ResponseWriter, r *http.Request
 }
 
 func (s *server) handlerListDeployments(w http.ResponseWriter, r *http.Request) {
-	res, err := s.state.ListDeployments(r.Context(), deployment.StatusCreated, deployment.StatusOngoing)
+	res, err := s.state.ListDeployments(r.Context(), deployment.StatusRunning)
 	if err != nil {
 		s.log.Errorf("Failed to list deployments from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/api"
+	"github.com/cloudfauj/cloudfauj/application"
+	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -39,13 +41,15 @@ func runDeployCmd(cmd *cobra.Command, args []string) error {
 
 	configFile, _ := cmd.Flags().GetString("config")
 	initConfig(configFile)
-	viper.Set("artifact", args[0])
 
-	targetEnv, _ := cmd.Flags().GetString("env")
-	viper.Set("target_env", targetEnv)
+	var app application.Application
+	_ = viper.Unmarshal(&app)
 
-	fmt.Printf("Deploying %s (%s) to %s\n", viper.GetString("name"), args[0], targetEnv)
-	eventsCh, err := apiClient.Deploy(viper.AllSettings())
+	env, _ := cmd.Flags().GetString("env")
+	spec := &deployment.Spec{App: &app, TargetEnv: env, Artifact: args[0]}
+
+	fmt.Printf("Deploying %s (%s) to %s\n", app.Name, spec.Artifact, spec.TargetEnv)
+	eventsCh, err := apiClient.Deploy(spec)
 	if err != nil {
 		return err
 	}

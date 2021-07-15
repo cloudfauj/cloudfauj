@@ -31,7 +31,7 @@ func (a *API) constructURL(s, p string, q queryParams) string {
 	return u.String()
 }
 
-func (a *API) makeWebsocketRequest(u string, payload map[string]interface{}) (<-chan *ServerEvent, error) {
+func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *ServerEvent, error) {
 	eventsCh := make(chan *ServerEvent)
 
 	conn, _, err := a.WsDialer.Dial(u, nil)
@@ -59,8 +59,8 @@ func (a *API) makeWebsocketRequest(u string, payload map[string]interface{}) (<-
 		}
 	}(conn, eventsCh)
 
-	if payload != nil {
-		if err = conn.WriteJSON(payload); err != nil {
+	if message != nil {
+		if err = conn.WriteMessage(websocket.BinaryMessage, message); err != nil {
 			return nil, fmt.Errorf("failed to send data to server: %v", err)
 		}
 	}
