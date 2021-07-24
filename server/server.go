@@ -9,15 +9,6 @@ import (
 	"net/http"
 )
 
-// config fields should be public
-type Config struct {
-	// DataDir is the base directory inside which Cloudfauj server
-	// stores all its data.
-	// To restore Cloudfauj server on to a new server, restoring a
-	// backup of this dir and running the server is enough.
-	DataDir string `mapstructure:"data_dir"`
-}
-
 // Event represent a server event
 type Event struct {
 	Msg string
@@ -34,13 +25,6 @@ type server struct {
 }
 
 const ApiV1Prefix = "/v1"
-
-const (
-	DeploymentsDir     = "deployments"
-	ApplicationsDir    = "applications"
-	ApplicationsEnvDir = "env"
-	LogFileBasename    = "logs.txt"
-)
 
 func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
 	srv := &server{

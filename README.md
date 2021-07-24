@@ -3,6 +3,8 @@ Automated Infrastructure provisioning in your own cloud
 
 TODO
 
+- setup local dir for all storage
+- implement state & infrastructrue for env creation, then test creation flow
 - revisit: we may not need the whole app logs command & its backend right now, we can just ship logs to cloudwatch
 
 - read up on websocket & gorilla lib

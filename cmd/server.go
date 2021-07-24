@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/cloudfauj/cloudfauj/state"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,12 +37,19 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse server configuration: %v", err)
 	}
 
-	// todo: setup local data storage directory
+	// todo: setup local data storage directory if not exists
 
 	log := logrus.New()
 	// todo: further configuration of logger
 
-	storage := state.New(log)
+	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
+	if err != nil {
+		return fmt.Errorf("failed to open database connection: %v", err)
+	}
+	defer db.Close()
+	log.Info("Connection to database established")
+
+	storage := state.New(log, db)
 	apiServer := server.New(&srvCfg, log, storage)
 
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")

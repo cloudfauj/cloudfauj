@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"database/sql"
 	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
@@ -9,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// State manages all structured & blob data persisted on disk
+// for Cloudfauj Server.
 type State interface {
 	CheckEnvExists(context.Context, string) (bool, error)
 	CreateEnvironment(context.Context, *environment.Environment) error
@@ -34,8 +37,9 @@ type State interface {
 
 type state struct {
 	log *logrus.Logger
+	db  *sql.DB
 }
 
-func New(l *logrus.Logger) State {
-	return &state{log: l}
+func New(l *logrus.Logger, db *sql.DB) State {
+	return &state{log: l, db: db}
 }
