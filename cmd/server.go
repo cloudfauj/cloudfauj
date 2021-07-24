@@ -47,9 +47,12 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to open database connection: %v", err)
 	}
 	defer db.Close()
-	log.Info("Connection to database established")
 
 	storage := state.New(log, db)
+	if err := storage.Migrate(cmd.Context()); err != nil {
+		return fmt.Errorf("failed to run DB migrations: %v", err)
+	}
+
 	apiServer := server.New(&srvCfg, log, storage)
 
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
@@ -58,6 +61,5 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	if err := http.ListenAndServe(bindAddr, apiServer); err != nil {
 		return fmt.Errorf("failed to start the server: %v", err)
 	}
-
 	return nil
 }

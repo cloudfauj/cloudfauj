@@ -2,11 +2,20 @@ package state
 
 import (
 	"context"
+	"database/sql"
 	"github.com/cloudfauj/cloudfauj/environment"
 )
 
 func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
-	return false, nil
+	var res string
+	err := s.db.QueryRow("SELECT name FROM environments WHERE name = ?", name).Scan(&res)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environment) error {

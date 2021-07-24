@@ -10,9 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// State manages all structured & blob data persisted on disk
-// for Cloudfauj Server.
+// State manages all structured data persisted on disk for Cloudfauj Server
 type State interface {
+	// Migrate runs DB migrations to prepare all tables for the server to work with
+	Migrate(context.Context) error
+
 	CheckEnvExists(context.Context, string) (bool, error)
 	CreateEnvironment(context.Context, *environment.Environment) error
 	UpdateEnvironment(context.Context, *environment.Environment) error
