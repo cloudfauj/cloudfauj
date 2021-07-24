@@ -67,3 +67,35 @@ func (i *Infrastructure) CreateECSService(ctx context.Context) (string, error) {
 func (i *Infrastructure) UpdateECSService(ctx context.Context, t string) error {
 	return nil
 }
+
+func (i *Infrastructure) DestroyVPC(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyECSCluster(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyALB(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroySecurityGroup(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyFargateCapacityProvider(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyIAMRole(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, id string) error {
+	return nil
+}
+
+func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string) error {
+	return nil
+}
