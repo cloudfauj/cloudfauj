@@ -25,7 +25,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
 	defer conn.Close()
 
-	var env environment.Environment
+	env := &environment.Environment{Infra: s.infra}
 	if err := conn.ReadJSON(&env); err != nil {
 		s.log.Errorf("Failed to read env config: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
@@ -52,15 +52,14 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	s.log.WithField("name", env.Name).Info("Creating new environment")
 
 	env.Status = environment.StatusProvisioning
-	if err := s.state.CreateEnvironment(r.Context(), &env); err != nil {
+	if err := s.state.CreateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to store env info in state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
 
 	eventsCh := make(chan environment.Event)
-	resCh := make(chan *environment.Resources, 1)
-	go env.Provision(r.Context(), eventsCh, resCh)
+	go env.Provision(r.Context(), eventsCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -73,9 +72,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env.Status = environment.StatusProvisioned
-	env.Res = <-resCh
-
-	if err := s.state.UpdateEnvironment(r.Context(), &env); err != nil {
+	if err := s.state.UpdateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to update env info in state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
@@ -101,6 +98,9 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
+
+	// todo: if even a single app is running in this env, reject
+	//  destroy request.
 
 	s.log.WithField("name", envName).Info("Destroying environment")
 
