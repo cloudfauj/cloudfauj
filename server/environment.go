@@ -25,7 +25,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
 	defer conn.Close()
 
-	env := &environment.Environment{Infra: s.infra}
+	env := &environment.Environment{Infra: s.infra, Res: &environment.Resources{}}
 	if err := conn.ReadJSON(&env); err != nil {
 		s.log.Errorf("Failed to read env config: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
