@@ -72,18 +72,100 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 }
 
 func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environment) error {
+	q := `UPDATE environments
+SET
+	status = ?,
+	vpc_id = ?,
+	internet_gateway = ?,
+	default_route_table = ?,
+	ecs_security_group = ?,
+	ecs_cluster = ?,
+	fargate_capacity_provider = ?,
+	compute_iam_role = ?,
+	lb_security_group = ?,
+	load_balancer = ?
+WHERE name = ?`
+
+	stmt, err := s.db.PrepareContext(ctx, q)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.ExecContext(
+		ctx,
+		e.Status,
+		e.Res.VpcId,
+		e.Res.InternetGateway,
+		e.Res.DefaultRouteTable,
+		e.Res.ECSSecurityGroup,
+		e.Res.ECSCluster,
+		e.Res.FargateCapProvider,
+		e.Res.ComputeIAMRole,
+		e.Res.AlbSecurityGroup,
+		e.Res.Alb,
+		e.Name,
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
-	return []string{}, nil
+	var res []string
+
+	rows, err := s.db.QueryContext(ctx, "SELECT name FROM environments")
+	if err != nil {
+		return res, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return res, err
+		}
+		res = append(res, name)
+	}
+	if err = rows.Err(); err != nil {
+		return res, err
+	}
+
+	return res, nil
 }
 
 func (s *state) Environment(ctx context.Context, name string) (*environment.Environment, error) {
-	// return nil if env doesn't exist
-	return nil, nil
+	e := &environment.Environment{Res: &environment.Resources{}}
+
+	err := s.db.QueryRowContext(
+		ctx, "SELECT * FROM environments WHERE name = ?", name,
+	).Scan(
+		&e.Name,
+		&e.Status,
+		&e.Res.VpcId,
+		&e.Res.InternetGateway,
+		&e.Res.DefaultRouteTable,
+		&e.Res.ECSSecurityGroup,
+		&e.Res.ECSCluster,
+		&e.Res.FargateCapProvider,
+		&e.Res.ComputeIAMRole,
+		&e.Res.AlbSecurityGroup,
+		&e.Res.Alb,
+	)
+	if err != nil {
+		// return nil response without any error if no such env found
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return e, nil
 }
 
-func (s *state) DeleteEnvironment(context.Context, string) error {
+func (s *state) DeleteEnvironment(ctx context.Context, name string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM environments WHERE name = ?", name)
+	if err != nil {
+		return err
+	}
 	return nil
 }
