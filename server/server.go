@@ -26,11 +26,11 @@ type server struct {
 
 const ApiV1Prefix = "/v1"
 
-func New(c *Config, l *logrus.Logger, s state.State) http.Handler {
+func New(c *Config, l *logrus.Logger, s state.State, i *infrastructure.Infrastructure) http.Handler {
 	srv := &server{
 		config:     c,
 		log:        l,
-		infra:      infrastructure.New(),
+		infra:      i,
 		state:      s,
 		wsUpgrader: &websocket.Upgrader{},
 		Router:     mux.NewRouter(),

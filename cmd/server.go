@@ -3,6 +3,11 @@ package cmd
 import (
 	"database/sql"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/cloudfauj/cloudfauj/state"
 	_ "github.com/mattn/go-sqlite3"
@@ -53,7 +58,15 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run DB migrations: %v", err)
 	}
 
-	apiServer := server.New(&srvCfg, log, storage)
+	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
+	if err != nil {
+		return fmt.Errorf("failed to setup AWS configuration: %v", err)
+	}
+	infra := infrastructure.New(
+		log, ec2.NewFromConfig(awsCfg), ecs.NewFromConfig(awsCfg), iam.NewFromConfig(awsCfg),
+	)
+
+	apiServer := server.New(&srvCfg, log, storage, infra)
 
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
 	log.WithFields(logrus.Fields{"bind_addr": bindAddr}).Info("Starting CloudFauj Server")

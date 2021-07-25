@@ -1,14 +1,28 @@
 package infrastructure
 
-import "context"
+import (
+	"context"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/sirupsen/logrus"
+)
 
-type Infrastructure struct{}
+type Infrastructure struct {
+	log *logrus.Logger
+	ec2 *ec2.Client
+	iam *iam.Client
+	ecs *ecs.Client
+}
 
-func New() *Infrastructure {
-	return &Infrastructure{}
+func New(l *logrus.Logger, ec2 *ec2.Client, ecs *ecs.Client, i *iam.Client) *Infrastructure {
+	return &Infrastructure{log: l, ec2: ec2, iam: i, ecs: ecs}
 }
 
 func (i *Infrastructure) GetAvailableCIDR(ctx context.Context, frozenBits int) (string, error) {
+	//res, err := i.ec2.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{VpcIds: []string{""}})
+	//i.log.Info(err)
+	//i.log.Info(res)
 	return "", nil
 }
 
