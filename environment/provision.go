@@ -9,8 +9,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	defer close(eventsCh)
 
 	// create VPC
-	cidr, _ := e.Infra.GetAvailableCIDR(ctx, 16)
-	v, err := e.Infra.CreateVPC(ctx, cidr)
+	v, err := e.Infra.CreateVPC(ctx)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create VPC: %v", err)}
 		return
@@ -28,7 +27,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	eventsCh <- Event{Msg: "Created Internet Gateway"}
 
 	// create default route table
-	rt, err := e.Infra.CreatePublicRouteTable(ctx, e.Res.VpcId)
+	rt, err := e.Infra.CreatePublicRouteTable(ctx, e.Res.VpcId, e.Res.InternetGateway)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create default route table: %v", err)}
 		return
