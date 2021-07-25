@@ -16,6 +16,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 		return
 	}
 	e.Res.VpcId = v
+	eventsCh <- Event{Msg: "Created VPC"}
 
 	// create internet gateway for VPC
 	g, err := e.Infra.CreateInternetGateway(ctx, e.Res.VpcId)
@@ -24,6 +25,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 		return
 	}
 	e.Res.InternetGateway = g
+	eventsCh <- Event{Msg: "Created Internet Gateway"}
 
 	// create default route table
 	rt, err := e.Infra.CreatePublicRouteTable(ctx, e.Res.VpcId)
@@ -32,16 +34,19 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 		return
 	}
 	e.Res.DefaultRouteTable = rt
+	eventsCh <- Event{Msg: "Created default route table"}
 
 	if err := e.createECSInfra(ctx); err != nil {
 		eventsCh <- Event{Err: err}
 		return
 	}
+	eventsCh <- Event{Msg: "Created ECS Fargate infrastructure"}
 
 	if err := e.createALBInfra(ctx); err != nil {
 		eventsCh <- Event{Err: err}
 		return
 	}
+	eventsCh <- Event{Msg: "Created Load balancer infrastructure"}
 }
 
 func (e *Environment) createECSInfra(ctx context.Context) error {

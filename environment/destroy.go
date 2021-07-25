@@ -12,29 +12,34 @@ func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 		eventsCh <- Event{Err: err}
 		return
 	}
+	eventsCh <- Event{Msg: "Destroyed Load balancer infrastructure"}
 
 	if err := e.destroyECSInfra(ctx); err != nil {
 		eventsCh <- Event{Err: err}
 		return
 	}
+	eventsCh <- Event{Msg: "Destroyed ECS fargate infrastructure"}
 
 	// destroy public route table
 	if err := e.Infra.DestroyPublicRouteTable(ctx, e.Res.DefaultRouteTable); err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to destroy default route table: %v", err)}
 		return
 	}
+	eventsCh <- Event{Msg: "Destroyed default route table"}
 
 	// destroy inet gateway
 	if err := e.Infra.DestroyInternetGateway(ctx, e.Res.InternetGateway); err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to destroy internet gateway: %v", err)}
 		return
 	}
+	eventsCh <- Event{Msg: "Destroyed internet gateway"}
 
 	// destroy VPC
 	if err := e.Infra.DestroyVPC(ctx, e.Res.VpcId); err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to destroy VPC: %v", err)}
 		return
 	}
+	eventsCh <- Event{Msg: "Destroyed VPC"}
 }
 
 func (e *Environment) destroyALBInfra(ctx context.Context) error {

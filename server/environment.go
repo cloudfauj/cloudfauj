@@ -22,10 +22,11 @@ func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
+	var env *environment.Environment
+
 	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
 	defer conn.Close()
 
-	env := &environment.Environment{Infra: s.infra, Res: &environment.Resources{}}
 	if err := conn.ReadJSON(&env); err != nil {
 		s.log.Errorf("Failed to read env config: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
@@ -52,11 +53,15 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	s.log.WithField("name", env.Name).Info("Creating new environment")
 
 	env.Status = environment.StatusProvisioning
+	env.Infra = s.infra
+	env.Res = &environment.Resources{}
+
 	if err := s.state.CreateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to store env info in state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
+	_ = conn.WriteMessage(websocket.TextMessage, []byte("New environment registered in state"))
 
 	eventsCh := make(chan environment.Event)
 	go env.Provision(r.Context(), eventsCh)
