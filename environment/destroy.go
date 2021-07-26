@@ -58,7 +58,7 @@ func (e *Environment) destroyALBInfra(ctx context.Context) error {
 
 func (e *Environment) destroyECSInfra(ctx context.Context) error {
 	// destroy iam role(s)
-	if err := e.Infra.DestroyIAMRole(ctx, e.Res.ComputeIAMRole); err != nil {
+	if err := e.Infra.DeleteIAMRole(ctx, e.Res.ComputeIAMRole); err != nil {
 		return fmt.Errorf("failed to destroy IAM role for compute: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func (e *Environment) destroyECSInfra(ctx context.Context) error {
 	}
 
 	// destroy ECS fargate cluster
-	if err := e.Infra.DestroyECSCluster(ctx, e.Res.ECSCluster); err != nil {
+	if err := e.Infra.DestroyFargateCluster(ctx, e.Res.ECSCluster); err != nil {
 		return fmt.Errorf("failed to destroy ECS cluster: %v", err)
 	}
 

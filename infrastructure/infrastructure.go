@@ -47,6 +47,12 @@ func (i *Infrastructure) CreateVPC(ctx context.Context) (string, error) {
 	return "", nil
 }
 
+// DestroyVPC deletes the given VPC
+func (i *Infrastructure) DestroyVPC(ctx context.Context, id string) error {
+	_, err := i.ec2.DeleteVpc(ctx, &ec2.DeleteVpcInput{VpcId: aws.String(id)})
+	return err
+}
+
 // CreateSubnet creates a subnet in the given VPC-AZ.
 // It calculates & uses the next available CIDR based on specified frozen bits.
 // eg- if frozen bits = 4 & VPC is /16, then it uses the next /20 subnet
@@ -66,6 +72,12 @@ func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix s
 	return aws.ToString(s.Subnet.SubnetId), nil
 }
 
+// DestroySubnet deletes the given subnet
+func (i *Infrastructure) DestroySubnet(ctx context.Context, id string) error {
+	_, err := i.ec2.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: aws.String(id)})
+	return err
+}
+
 // CreateFargateCluster creates an ECS cluster with a default
 // provider strategy of Fargate.
 func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) (string, error) {
@@ -77,6 +89,12 @@ func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) 
 		return "", err
 	}
 	return aws.ToString(c.Cluster.ClusterArn), nil
+}
+
+// DestroyFargateCluster deletes a cluster which only contains Fargate capacity provider
+func (i *Infrastructure) DestroyFargateCluster(ctx context.Context, arn string) error {
+	_, err := i.ecs.DeleteCluster(ctx, &ecs.DeleteClusterInput{Cluster: aws.String(arn)})
+	return err
 }
 
 // CreateALB creates an application load balancer
@@ -94,12 +112,30 @@ func (i *Infrastructure) CreateALB(ctx context.Context, name, sg string, subnets
 	return aws.ToString(alb.LoadBalancers[0].LoadBalancerArn), nil
 }
 
+func (i *Infrastructure) DestroyALB(ctx context.Context, arn string) error {
+	_, err := i.lb.DeleteLoadBalancer(
+		ctx,
+		&elasticloadbalancingv2.DeleteLoadBalancerInput{LoadBalancerArn: aws.String(arn)},
+	)
+	return err
+}
+
 func (i *Infrastructure) CreateSecurityGroup(ctx context.Context) (string, error) {
 	return "", nil
 }
 
+func (i *Infrastructure) DestroySecurityGroup(ctx context.Context, id string) error {
+	_, err := i.ec2.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: aws.String(id)})
+	return err
+}
+
 func (i *Infrastructure) CreateIAMRole(ctx context.Context) (string, error) {
 	return "", nil
+}
+
+func (i *Infrastructure) DeleteIAMRole(ctx context.Context, name string) error {
+	_, err := i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
+	return err
 }
 
 // CreateInternetGateway creates a new internet gateway and
@@ -122,6 +158,11 @@ func (i *Infrastructure) CreateInternetGateway(ctx context.Context, vpc string) 
 	return aws.ToString(gid), nil
 }
 
+func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, id string) error {
+	_, err := i.ec2.DeleteInternetGateway(ctx, &ec2.DeleteInternetGatewayInput{InternetGatewayId: aws.String(id)})
+	return err
+}
+
 // CreatePublicRouteTable creates a public route table for a vpc
 // by routing all traffic via its internet gateway.
 func (i *Infrastructure) CreatePublicRouteTable(ctx context.Context, vpc string, igw string) (string, error) {
@@ -140,58 +181,8 @@ func (i *Infrastructure) CreatePublicRouteTable(ctx context.Context, vpc string,
 	return aws.ToString(rt.RouteTable.RouteTableId), nil
 }
 
-func (i *Infrastructure) CreateTaskDefinition(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) CreateTargetGroup(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) AttachTargetGroup(ctx context.Context, t string) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) CreateDNSRecord(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) CreateECSService(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) UpdateECSService(ctx context.Context, t string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyVPC(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyECSCluster(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyALB(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroySecurityGroup(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyFargateCapacityProvider(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyIAMRole(ctx context.Context, id string) error {
-	return nil
-}
-
-func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, id string) error {
-	return nil
-}
-
+// DestroyPublicRouteTable deletes the given route table associated with an internet gateway
 func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string) error {
-	return nil
+	_, err := i.ec2.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{RouteTableId: aws.String(id)})
+	return err
 }

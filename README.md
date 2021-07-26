@@ -3,14 +3,14 @@ Automated Infrastructure provisioning in your own cloud
 
 TODO
 
-- write infra methods for env creation/deletion
-- write infra methods for app creation
-- implement all other side methods
-- cli server: setup local dir for all storage
-- revisit: we may not need the whole app logs command & its backend right now, we can just ship logs to cloudwatch
-- polish the whole user experience
-- write documentation
- launch v1
+- write infra methods for env creation/deletion - 31 july
+- write infra methods for app creation - 6 aug
+- implement all other side methods - 9 aug
+- cli server: setup local dir for all storage - 13 aug
+- revisit: we may not need the whole app logs command & its backend right now, we can just ship logs to cloudwatch - 15 aug
+- polish the whole user experience - 19 aug
+- write documentation - 25 aug
+- launch v1 - 25 aug
 
 - read up on websocket & gorilla lib
 
