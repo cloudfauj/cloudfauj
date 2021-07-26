@@ -16,6 +16,8 @@ const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	ecs_cluster VARCHAR(100),
 	compute_iam_role VARCHAR(200),
 	lb_security_group VARCHAR(100),
+	lb_subnet_a VARCHAR(100),
+	lb_subnet_b VARCHAR(100),
 	load_balancer VARCHAR(200)
 )`
 
@@ -42,8 +44,10 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 	ecs_cluster,
 	compute_iam_role,
 	lb_security_group,
+	lb_subnet_a,
+	lb_subnet_b,
 	load_balancer
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -60,6 +64,8 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 		e.Res.ECSCluster,
 		e.Res.ComputeIAMRole,
 		e.Res.AlbSecurityGroup,
+		e.Res.AlbSubnets[0],
+		e.Res.AlbSubnets[1],
 		e.Res.Alb,
 	)
 	if err != nil {
@@ -79,6 +85,8 @@ SET
 	ecs_cluster = ?,
 	compute_iam_role = ?,
 	lb_security_group = ?,
+	lb_subnet_a = ?,
+	lb_subnet_b = ?,
 	load_balancer = ?
 WHERE name = ?`
 
@@ -96,6 +104,8 @@ WHERE name = ?`
 		e.Res.ECSCluster,
 		e.Res.ComputeIAMRole,
 		e.Res.AlbSecurityGroup,
+		e.Res.AlbSubnets[0],
+		e.Res.AlbSubnets[1],
 		e.Res.Alb,
 		e.Name,
 	)
@@ -129,7 +139,8 @@ func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
 }
 
 func (s *state) Environment(ctx context.Context, name string) (*environment.Environment, error) {
-	e := &environment.Environment{Res: &environment.Resources{}}
+	c := environment.AlbSubnetCount
+	e := &environment.Environment{Res: &environment.Resources{AlbSubnets: make([]string, c, c)}}
 
 	err := s.db.QueryRowContext(
 		ctx, "SELECT * FROM environments WHERE name = ?", name,
@@ -143,6 +154,8 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 		&e.Res.ECSCluster,
 		&e.Res.ComputeIAMRole,
 		&e.Res.AlbSecurityGroup,
+		&e.Res.AlbSubnets[0],
+		&e.Res.AlbSubnets[1],
 		&e.Res.Alb,
 	)
 	if err != nil {

@@ -3,6 +3,8 @@ package environment
 import (
 	"context"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/infrastructure"
+	"strconv"
 )
 
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
@@ -64,7 +66,7 @@ func (e *Environment) createECSInfra(ctx context.Context) error {
 	e.Res.ECSSecurityGroup = sg
 
 	// create ECS fargate cluster
-	c, err := e.Infra.CreateFargateCluster(ctx, "cfoj-"+e.Name)
+	c, err := e.Infra.CreateFargateCluster(ctx, e.baseResourceName())
 	if err != nil {
 		return fmt.Errorf("failed to create ECS cluster: %v", err)
 	}
@@ -74,6 +76,19 @@ func (e *Environment) createECSInfra(ctx context.Context) error {
 }
 
 func (e *Environment) createALBInfra(ctx context.Context) error {
+	// create subnets
+	e.Res.AlbSubnets = make([]string, AlbSubnetCount, AlbSubnetCount)
+	az := []string{infrastructure.Az1Suffix, infrastructure.Az2Suffix}
+
+	for i := 0; i < AlbSubnetCount; i++ {
+		name := e.baseResourceName() + strconv.Itoa(i+1)
+		s, err := e.Infra.CreateSubnet(ctx, name, e.Res.VpcId, az[i], 8)
+		if err != nil {
+			return fmt.Errorf("failed to create ALB subnet: %v", err)
+		}
+		e.Res.AlbSubnets[i] = s
+	}
+
 	// create security group
 	sg, err := e.Infra.CreateSecurityGroup(ctx)
 	if err != nil {
@@ -82,11 +97,15 @@ func (e *Environment) createALBInfra(ctx context.Context) error {
 	e.Res.AlbSecurityGroup = sg
 
 	// create ALB
-	lb, err := e.Infra.CreateALB(ctx)
+	lb, err := e.Infra.CreateALB(ctx, e.baseResourceName(), e.Res.AlbSecurityGroup, e.Res.AlbSubnets)
 	if err != nil {
 		return fmt.Errorf("failed to create ALB: %v", err)
 	}
 	e.Res.Alb = lb
 
 	return nil
+}
+
+func (e *Environment) baseResourceName() string {
+	return "cfoj-" + e.Name
 }

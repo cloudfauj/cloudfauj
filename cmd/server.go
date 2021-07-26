@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/cloudfauj/cloudfauj/server"
@@ -63,7 +64,11 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to setup AWS configuration: %v", err)
 	}
 	infra := infrastructure.New(
-		log, ec2.NewFromConfig(awsCfg), ecs.NewFromConfig(awsCfg), iam.NewFromConfig(awsCfg),
+		log,
+		ec2.NewFromConfig(awsCfg),
+		ecs.NewFromConfig(awsCfg),
+		iam.NewFromConfig(awsCfg),
+		elasticloadbalancingv2.NewFromConfig(awsCfg),
 	)
 
 	apiServer := server.New(&srvCfg, log, storage, infra)

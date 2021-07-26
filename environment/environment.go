@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const AlbSubnetCount = 2
+
 const (
 	StatusProvisioning = "provisioning"
 	StatusProvisioned  = "provisioned"
@@ -28,8 +30,9 @@ type Resources struct {
 	ECSCluster       string `json:"ecs_cluster"`
 	ComputeIAMRole   string `json:"compute_iam_role"`
 
-	AlbSecurityGroup string `json:"lb_security_group"`
-	Alb              string `json:"load_balancer"`
+	AlbSecurityGroup string   `json:"lb_security_group"`
+	AlbSubnets       []string `json:"lb_subnets"`
+	Alb              string   `json:"load_balancer"`
 }
 
 type Event struct {

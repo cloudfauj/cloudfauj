@@ -1,4 +1,5 @@
 # github.com/aws/aws-sdk-go-v2 v1.7.1
+## explicit
 github.com/aws/aws-sdk-go-v2
 github.com/aws/aws-sdk-go-v2/aws
 github.com/aws/aws-sdk-go-v2/aws/middleware
@@ -44,6 +45,16 @@ github.com/aws/aws-sdk-go-v2/service/ec2/types
 github.com/aws/aws-sdk-go-v2/service/ecs
 github.com/aws/aws-sdk-go-v2/service/ecs/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ecs/types
+# github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.5.0
+## explicit
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/internal/endpoints
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/types
+# github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.5.0
+## explicit
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/internal/endpoints
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types
 # github.com/aws/aws-sdk-go-v2/service/iam v1.7.0
 ## explicit
 github.com/aws/aws-sdk-go-v2/service/iam

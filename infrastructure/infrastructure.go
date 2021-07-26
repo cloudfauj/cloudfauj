@@ -6,8 +6,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	Az1Suffix = "a"
+	Az2Suffix = "b"
+	Az3Suffix = "c"
 )
 
 type Infrastructure struct {
@@ -15,10 +22,17 @@ type Infrastructure struct {
 	ec2 *ec2.Client
 	iam *iam.Client
 	ecs *ecs.Client
+	lb  *elasticloadbalancingv2.Client
 }
 
-func New(l *logrus.Logger, ec2 *ec2.Client, ecs *ecs.Client, i *iam.Client) *Infrastructure {
-	return &Infrastructure{log: l, ec2: ec2, iam: i, ecs: ecs}
+func New(
+	l *logrus.Logger,
+	ec2 *ec2.Client,
+	ecs *ecs.Client,
+	i *iam.Client,
+	lb *elasticloadbalancingv2.Client,
+) *Infrastructure {
+	return &Infrastructure{log: l, ec2: ec2, iam: i, ecs: ecs, lb: lb}
 }
 
 // CreateVPC creates a new VPC in aws with an available /16 CIDR
@@ -31,6 +45,25 @@ func (i *Infrastructure) CreateVPC(ctx context.Context) (string, error) {
 	//return aws.ToString(res.Vpc.VpcId), nil
 
 	return "", nil
+}
+
+// CreateSubnet creates a subnet in the given VPC-AZ.
+// It calculates & uses the next available CIDR based on specified frozen bits.
+// eg- if frozen bits = 4 & VPC is /16, then it uses the next /20 subnet
+// (16 + 4 frozen) available in the VPC.
+func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix string, frozen int) (string, error) {
+	// todo: calculate CIDR
+	// todo: infer AZ
+
+	s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
+		CidrBlock:        aws.String(cidr),
+		VpcId:            aws.String(vpc),
+		AvailabilityZone: aws.String(az),
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(s.Subnet.SubnetId), nil
 }
 
 // CreateFargateCluster creates an ECS cluster with a default
@@ -46,8 +79,19 @@ func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) 
 	return aws.ToString(c.Cluster.ClusterArn), nil
 }
 
-func (i *Infrastructure) CreateALB(ctx context.Context) (string, error) {
-	return "", nil
+// CreateALB creates an application load balancer
+func (i *Infrastructure) CreateALB(ctx context.Context, name, sg string, subnets []string) (string, error) {
+	alb, err := i.lb.CreateLoadBalancer(ctx, &elasticloadbalancingv2.CreateLoadBalancerInput{
+		Name:           aws.String(name),
+		Scheme:         "internet-facing",
+		SecurityGroups: []string{sg},
+		Subnets:        subnets,
+		Type:           "application",
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(alb.LoadBalancers[0].LoadBalancerArn), nil
 }
 
 func (i *Infrastructure) CreateSecurityGroup(ctx context.Context) (string, error) {
