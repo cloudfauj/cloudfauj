@@ -33,8 +33,17 @@ func (i *Infrastructure) CreateVPC(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (i *Infrastructure) CreateECSCluster(ctx context.Context) (string, error) {
-	return "", nil
+// CreateFargateCluster creates an ECS cluster with a default
+// provider strategy of Fargate.
+func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) (string, error) {
+	c, err := i.ecs.CreateCluster(ctx, &ecs.CreateClusterInput{
+		CapacityProviders: []string{"FARGATE"},
+		ClusterName:       aws.String(name),
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(c.Cluster.ClusterArn), nil
 }
 
 func (i *Infrastructure) CreateALB(ctx context.Context) (string, error) {
@@ -42,10 +51,6 @@ func (i *Infrastructure) CreateALB(ctx context.Context) (string, error) {
 }
 
 func (i *Infrastructure) CreateSecurityGroup(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) CreateFargateCapacityProvider(ctx context.Context) (string, error) {
 	return "", nil
 }
 

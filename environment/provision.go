@@ -63,15 +63,8 @@ func (e *Environment) createECSInfra(ctx context.Context) error {
 	}
 	e.Res.ECSSecurityGroup = sg
 
-	// create fargate capacity provider
-	p, err := e.Infra.CreateFargateCapacityProvider(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create fargate capacity provider: %v", err)
-	}
-	e.Res.FargateCapProvider = p
-
 	// create ECS fargate cluster
-	c, err := e.Infra.CreateECSCluster(ctx)
+	c, err := e.Infra.CreateFargateCluster(ctx, "cfoj-"+e.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create ECS cluster: %v", err)
 	}

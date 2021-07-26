@@ -67,11 +67,6 @@ func (e *Environment) destroyECSInfra(ctx context.Context) error {
 		return fmt.Errorf("failed to destroy ECS security group: %v", err)
 	}
 
-	// destroy fargate capacity provider
-	if err := e.Infra.DestroyFargateCapacityProvider(ctx, e.Res.FargateCapProvider); err != nil {
-		return fmt.Errorf("failed to destroy fargate capacity provider: %v", err)
-	}
-
 	// destroy ECS fargate cluster
 	if err := e.Infra.DestroyECSCluster(ctx, e.Res.ECSCluster); err != nil {
 		return fmt.Errorf("failed to destroy ECS cluster: %v", err)

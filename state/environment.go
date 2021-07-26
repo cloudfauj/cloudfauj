@@ -14,7 +14,6 @@ const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	default_route_table VARCHAR(50),
 	ecs_security_group VARCHAR(100),
 	ecs_cluster VARCHAR(100),
-	fargate_capacity_provider VARCHAR(100),
 	compute_iam_role VARCHAR(200),
 	lb_security_group VARCHAR(100),
 	load_balancer VARCHAR(200)
@@ -41,11 +40,10 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 	default_route_table,
 	ecs_security_group,
 	ecs_cluster,
-	fargate_capacity_provider,
 	compute_iam_role,
 	lb_security_group,
 	load_balancer
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -60,7 +58,6 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 		e.Res.DefaultRouteTable,
 		e.Res.ECSSecurityGroup,
 		e.Res.ECSCluster,
-		e.Res.FargateCapProvider,
 		e.Res.ComputeIAMRole,
 		e.Res.AlbSecurityGroup,
 		e.Res.Alb,
@@ -80,7 +77,6 @@ SET
 	default_route_table = ?,
 	ecs_security_group = ?,
 	ecs_cluster = ?,
-	fargate_capacity_provider = ?,
 	compute_iam_role = ?,
 	lb_security_group = ?,
 	load_balancer = ?
@@ -98,7 +94,6 @@ WHERE name = ?`
 		e.Res.DefaultRouteTable,
 		e.Res.ECSSecurityGroup,
 		e.Res.ECSCluster,
-		e.Res.FargateCapProvider,
 		e.Res.ComputeIAMRole,
 		e.Res.AlbSecurityGroup,
 		e.Res.Alb,
@@ -146,7 +141,6 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 		&e.Res.DefaultRouteTable,
 		&e.Res.ECSSecurityGroup,
 		&e.Res.ECSCluster,
-		&e.Res.FargateCapProvider,
 		&e.Res.ComputeIAMRole,
 		&e.Res.AlbSecurityGroup,
 		&e.Res.Alb,
