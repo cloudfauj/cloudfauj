@@ -44,10 +44,7 @@ func setupV1Routes(s *server) {
 	r.HandleFunc("/health", s.handlerGetHealthcheck).Methods(http.MethodGet)
 	r.HandleFunc("/environments", s.handlerListEnvironments).Methods(http.MethodGet)
 	r.HandleFunc("/deployments", s.handlerListDeployments).Methods(http.MethodGet)
-
-	appR := r.PathPrefix("/app").Subrouter()
-	appR.HandleFunc("/{name}/logs", s.handlerGetAppLogs).Methods(http.MethodGet)
-	appR.HandleFunc("/deploy", s.handlerDeployApp)
+	r.HandleFunc("/app/deploy", s.handlerDeployApp)
 
 	depR := r.PathPrefix("/deployment").Subrouter()
 	depR.HandleFunc("/{id}", s.handlerGetDeployment).Methods(http.MethodGet)

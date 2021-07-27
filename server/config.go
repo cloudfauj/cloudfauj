@@ -11,12 +11,10 @@ type Config struct {
 }
 
 const (
-	DeploymentsDir     = "deployments"
-	ApplicationsDir    = "applications"
-	ApplicationsEnvDir = "env"
-	LogFileBasename    = "logs.txt"
-	DBDir              = "db"
-	DBServerFilename   = "server.db"
+	DeploymentsDir   = "deployments"
+	LogFileBasename  = "logs.txt"
+	DBDir            = "db"
+	DBServerFilename = "server.db"
 )
 
 func (c *Config) DBFilePath() string {

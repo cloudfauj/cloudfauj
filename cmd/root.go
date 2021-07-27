@@ -27,7 +27,6 @@ func Execute() {
 }
 
 func init() {
-	appCmd.AddCommand(appLogsCmd)
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
 	deploymentCmd.AddCommand(deploymentStatusCmd, deploymentLogsCmd, deploymentListCmd)
 
@@ -37,7 +36,7 @@ func init() {
 		"http://127.0.0.1:6200",
 		"HTTP address of Cloudfauj Server, including the Scheme",
 	)
-	rootCmd.AddCommand(serverCmd, appCmd, envCmd, deployCmd, deploymentCmd)
+	rootCmd.AddCommand(serverCmd, envCmd, deployCmd, deploymentCmd)
 
 	// prevent error message showing up twice
 	rootCmd.SilenceErrors = true

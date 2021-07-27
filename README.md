@@ -7,7 +7,6 @@ TODO
 - write infra methods for app creation - 6 aug
 - implement all other side methods - 9 aug
 - cli server: setup local dir for all storage - 13 aug
-- revisit: we may not need the whole app logs command & its backend right now, we can just ship logs to cloudwatch - 15 aug
 - polish the whole user experience - 19 aug
 - write documentation - 25 aug
 - launch v1 - 25 aug
