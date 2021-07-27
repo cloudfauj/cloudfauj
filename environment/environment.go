@@ -41,7 +41,6 @@ type Event struct {
 }
 
 func (e *Environment) CheckIsValid() error {
-	// todo: Do regex validation of env name
 	if len(strings.TrimSpace(e.Name)) == 0 {
 		return errors.New("name cannot be empty")
 	}

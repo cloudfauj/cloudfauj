@@ -41,6 +41,7 @@ func New(c *Config, l *logrus.Logger, s state.State, i *infrastructure.Infrastru
 
 func setupV1Routes(s *server) {
 	r := s.Router.PathPrefix(ApiV1Prefix).Subrouter()
+
 	r.HandleFunc("/health", s.handlerGetHealthcheck).Methods(http.MethodGet)
 	r.HandleFunc("/environments", s.handlerListEnvironments).Methods(http.MethodGet)
 	r.HandleFunc("/deployments", s.handlerListDeployments).Methods(http.MethodGet)

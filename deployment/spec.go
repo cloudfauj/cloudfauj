@@ -1,6 +1,10 @@
 package deployment
 
-import "github.com/cloudfauj/cloudfauj/application"
+import (
+	"errors"
+	"github.com/cloudfauj/cloudfauj/application"
+	"strings"
+)
 
 // Spec describes the deployment specification supplied by the client
 // to deploy a particular application.
@@ -11,6 +15,11 @@ type Spec struct {
 }
 
 func (s *Spec) CheckIsValid() error {
-	// validate own fields
+	if len(strings.TrimSpace(s.TargetEnv)) == 0 {
+		return errors.New("target environment not specified")
+	}
+	if len(strings.TrimSpace(s.Artifact)) == 0 {
+		return errors.New("artifact not specified")
+	}
 	return s.App.CheckIsValid()
 }

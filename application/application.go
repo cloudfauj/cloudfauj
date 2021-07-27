@@ -1,5 +1,10 @@
 package application
 
+import (
+	"errors"
+	"strings"
+)
+
 const TypeServer = "server"
 
 const VisibilityPublic = "public"
@@ -25,5 +30,14 @@ type Application struct {
 }
 
 func (a *Application) CheckIsValid() error {
+	if len(strings.TrimSpace(a.Name)) == 0 {
+		return errors.New("name cannot be empty")
+	}
+	if a.Type != TypeServer {
+		return errors.New("only " + TypeServer + " type is supported")
+	}
+	if a.Visibility != VisibilityPublic {
+		return errors.New("only " + VisibilityPublic + " visibility is supported")
+	}
 	return nil
 }
