@@ -136,6 +136,8 @@ func (i *Infrastructure) DestroySubnet(ctx context.Context, id string) error {
 	return err
 }
 
+// CreateECSTaskExecIAMRole create an IAM role for ECS tasks to assume so they can
+// pull images from ECR and ship logs to cloudwatch.
 func (i *Infrastructure) CreateECSTaskExecIAMRole(ctx context.Context, name string) (string, error) {
 	ad := `{
   "Version": "2012-10-17",
@@ -163,8 +165,16 @@ func (i *Infrastructure) CreateECSTaskExecIAMRole(ctx context.Context, name stri
 	return aws.ToString(r.Role.Arn), nil
 }
 
-func (i *Infrastructure) DeleteIAMRole(ctx context.Context, name string) error {
-	_, err := i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
+// DeleteECSTaskExecIAMRole detaches policies from & deletes an ECS task exec IAM role.
+func (i *Infrastructure) DeleteECSTaskExecIAMRole(ctx context.Context, name string) error {
+	_, err := i.iam.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
+		PolicyArn: aws.String(ECSTaskExecPolicy),
+		RoleName:  aws.String(name),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to detach policy from role: %v", err)
+	}
+	_, err = i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
 	return err
 }
 

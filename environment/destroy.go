@@ -42,7 +42,7 @@ func (e *Environment) destroyECSInfra(ctx context.Context) error {
 	}
 
 	// destroy iam role(s)
-	if err := e.Infra.DeleteIAMRole(ctx, e.Res.TaskExecIAMRole); err != nil {
+	if err := e.Infra.DeleteECSTaskExecIAMRole(ctx, e.Res.TaskExecIAMRole); err != nil {
 		return fmt.Errorf("failed to destroy IAM role for compute: %v", err)
 	}
 
