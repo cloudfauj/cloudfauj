@@ -51,11 +51,11 @@ func (e *Environment) createECSInfra(ctx context.Context) error {
 
 	// create ECS task execution IAM role that allows tasks
 	// to pull images & ship logs to CWL.
-	role, err := e.Infra.CreateIAMRole(ctx)
-	if err != nil {
+	n := e.baseResourceName() + "-ecs-task-exec"
+	if _, err := e.Infra.CreateECSTaskExecIAMRole(ctx, n); err != nil {
 		return fmt.Errorf("failed to create IAM role for compute: %v", err)
 	}
-	e.Res.TaskExecIAMRole = role
+	e.Res.TaskExecIAMRole = n
 
 	// create ECS fargate cluster
 	c, err := e.Infra.CreateFargateCluster(ctx, e.baseResourceName())

@@ -15,11 +15,10 @@ import (
 )
 
 const (
-	VPCFrozenBits  = 16
-	Az1Suffix      = "a"
-	Az2Suffix      = "b"
-	MinVPCCidr     = "10.0.0.0/16"
-	LargestVPCCidr = "10.0.0.0/8"
+	VPCFrozenBits     = 16
+	MinVPCCidr        = "10.0.0.0/16"
+	LargestVPCCidr    = "10.0.0.0/8"
+	ECSTaskExecPolicy = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 )
 
 type Infrastructure struct {
@@ -137,8 +136,31 @@ func (i *Infrastructure) DestroySubnet(ctx context.Context, id string) error {
 	return err
 }
 
-func (i *Infrastructure) CreateIAMRole(ctx context.Context) (string, error) {
-	return "", nil
+func (i *Infrastructure) CreateECSTaskExecIAMRole(ctx context.Context, name string) (string, error) {
+	ad := `{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Effect": "Allow",
+    "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }
+}`
+	r, err := i.iam.CreateRole(ctx, &iam.CreateRoleInput{
+		AssumeRolePolicyDocument: aws.String(ad),
+		RoleName:                 aws.String(name),
+		Description:              aws.String("ECS task execution role for Cloudfauj environment"),
+	})
+	if err != nil {
+		return "", err
+	}
+	_, err = i.iam.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
+		PolicyArn: aws.String(ECSTaskExecPolicy),
+		RoleName:  aws.String(name),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach policy to role: %v", err)
+	}
+	return aws.ToString(r.Role.Arn), nil
 }
 
 func (i *Infrastructure) DeleteIAMRole(ctx context.Context, name string) error {
