@@ -109,24 +109,26 @@ func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string)
 	return err
 }
 
-// CreateSubnet creates a subnet in the given VPC-AZ.
-// It calculates & uses the next available CIDR based on specified frozen bits.
-// eg- if frozen bits = 4 & VPC is /16, then it uses the next /20 subnet
-// (16 + 4 frozen) available in the VPC.
-func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix string, frozen int) (string, error) {
-	// todo: calculate CIDR
-	// todo: infer AZ
+// CreateSubnet creates a subnet in the given VPC.
+func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc string, newBits, num int) (string, error) {
+	v, err := i.ec2.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{VpcIds: []string{vpc}})
+	if err != nil {
+		return "", fmt.Errorf("failed to get vpc info: %v", err)
+	}
+	_, vpcCidr, _ := net.ParseCIDR(aws.ToString(v.Vpcs[0].CidrBlock))
 
-	//s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
-	//	CidrBlock:        aws.String(cidr),
-	//	VpcId:            aws.String(vpc),
-	//	AvailabilityZone: aws.String(az),
-	//})
-	//if err != nil {
-	//	return "", err
-	//}
-	//return aws.ToString(s.Subnet.SubnetId), nil
-	return "", nil
+	subCidr, err := cidr.Subnet(vpcCidr, newBits, num)
+	if err != nil {
+		return "", fmt.Errorf("failed to calculate subnet CIDR: %v", err)
+	}
+	s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
+		VpcId:     aws.String(vpc),
+		CidrBlock: aws.String(subCidr.String()),
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(s.Subnet.SubnetId), nil
 }
 
 // DestroySubnet deletes the given subnet

@@ -3,7 +3,6 @@ package environment
 import (
 	"context"
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/infrastructure"
 )
 
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
@@ -44,8 +43,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 }
 
 func (e *Environment) createECSInfra(ctx context.Context) error {
-	n := e.baseResourceName() + infrastructure.Az1Suffix
-	s, err := e.Infra.CreateSubnet(ctx, n, e.Res.VpcId, infrastructure.Az1Suffix, 4)
+	s, err := e.Infra.CreateSubnet(ctx, e.baseResourceName(), e.Res.VpcId, 4, 1)
 	if err != nil {
 		return fmt.Errorf("failed to create subnet for containers: %v", err)
 	}
