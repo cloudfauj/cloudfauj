@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/infrastructure"
-	"strconv"
 )
 
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
@@ -42,28 +41,23 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 		return
 	}
 	eventsCh <- Event{Msg: "Created ECS Fargate infrastructure"}
-
-	if err := e.createALBInfra(ctx); err != nil {
-		eventsCh <- Event{Err: err}
-		return
-	}
-	eventsCh <- Event{Msg: "Created Load balancer infrastructure"}
 }
 
 func (e *Environment) createECSInfra(ctx context.Context) error {
-	// create iam role(s)
+	n := e.baseResourceName() + infrastructure.Az1Suffix
+	s, err := e.Infra.CreateSubnet(ctx, n, e.Res.VpcId, infrastructure.Az1Suffix, 4)
+	if err != nil {
+		return fmt.Errorf("failed to create subnet for containers: %v", err)
+	}
+	e.Res.ComputeSubnet = s
+
+	// create ECS task execution IAM role that allows tasks
+	// to pull images & ship logs to CWL.
 	role, err := e.Infra.CreateIAMRole(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create IAM role for compute: %v", err)
 	}
-	e.Res.ComputeIAMRole = role
-
-	// create security group
-	sg, err := e.Infra.CreateSecurityGroup(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create ECS security group: %v", err)
-	}
-	e.Res.ECSSecurityGroup = sg
+	e.Res.TaskExecIAMRole = role
 
 	// create ECS fargate cluster
 	c, err := e.Infra.CreateFargateCluster(ctx, e.baseResourceName())
@@ -71,37 +65,6 @@ func (e *Environment) createECSInfra(ctx context.Context) error {
 		return fmt.Errorf("failed to create ECS cluster: %v", err)
 	}
 	e.Res.ECSCluster = c
-
-	return nil
-}
-
-func (e *Environment) createALBInfra(ctx context.Context) error {
-	// create subnets
-	e.Res.AlbSubnets = make([]string, AlbSubnetCount, AlbSubnetCount)
-	az := []string{infrastructure.Az1Suffix, infrastructure.Az2Suffix}
-
-	for i := 0; i < AlbSubnetCount; i++ {
-		name := e.baseResourceName() + strconv.Itoa(i+1)
-		s, err := e.Infra.CreateSubnet(ctx, name, e.Res.VpcId, az[i], 8)
-		if err != nil {
-			return fmt.Errorf("failed to create ALB subnet: %v", err)
-		}
-		e.Res.AlbSubnets[i] = s
-	}
-
-	// create security group
-	sg, err := e.Infra.CreateSecurityGroup(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create ALB security group: %v", err)
-	}
-	e.Res.AlbSecurityGroup = sg
-
-	// create ALB
-	lb, err := e.Infra.CreateALB(ctx, e.baseResourceName(), e.Res.AlbSecurityGroup, e.Res.AlbSubnets)
-	if err != nil {
-		return fmt.Errorf("failed to create ALB: %v", err)
-	}
-	e.Res.Alb = lb
 
 	return nil
 }

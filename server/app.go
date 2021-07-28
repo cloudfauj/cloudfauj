@@ -123,6 +123,10 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 func (s *server) provisionInfra(ctx context.Context, a *application.Application, e chan<- *Event) {
 	defer close(e)
 
+	// (user-provided) ecr repo for docker image
+	// security group that only opens the bind_port for ingress
+	// auto-assigned public ip
+
 	i := &infra.AppInfra{App: a.Name}
 
 	// ensure public visibility

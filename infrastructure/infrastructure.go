@@ -60,96 +60,10 @@ func (i *Infrastructure) DestroyVPC(ctx context.Context, id string) error {
 	return err
 }
 
-// CreateSubnet creates a subnet in the given VPC-AZ.
-// It calculates & uses the next available CIDR based on specified frozen bits.
-// eg- if frozen bits = 4 & VPC is /16, then it uses the next /20 subnet
-// (16 + 4 frozen) available in the VPC.
-func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix string, frozen int) (string, error) {
-	// todo: calculate CIDR
-	// todo: infer AZ
-
-	//s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
-	//	CidrBlock:        aws.String(cidr),
-	//	VpcId:            aws.String(vpc),
-	//	AvailabilityZone: aws.String(az),
-	//})
-	//if err != nil {
-	//	return "", err
-	//}
-	//return aws.ToString(s.Subnet.SubnetId), nil
-	return "", nil
-}
-
-// DestroySubnet deletes the given subnet
-func (i *Infrastructure) DestroySubnet(ctx context.Context, id string) error {
-	_, err := i.ec2.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: aws.String(id)})
-	return err
-}
-
-// CreateFargateCluster creates an ECS cluster with a default
-// provider strategy of Fargate.
-func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) (string, error) {
-	c, err := i.ecs.CreateCluster(ctx, &ecs.CreateClusterInput{
-		CapacityProviders: []string{"FARGATE"},
-		ClusterName:       aws.String(name),
-	})
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(c.Cluster.ClusterArn), nil
-}
-
-// DestroyFargateCluster deletes a cluster which only contains Fargate capacity provider
-func (i *Infrastructure) DestroyFargateCluster(ctx context.Context, arn string) error {
-	_, err := i.ecs.DeleteCluster(ctx, &ecs.DeleteClusterInput{Cluster: aws.String(arn)})
-	return err
-}
-
-// CreateALB creates an application load balancer
-func (i *Infrastructure) CreateALB(ctx context.Context, name, sg string, subnets []string) (string, error) {
-	alb, err := i.lb.CreateLoadBalancer(ctx, &elasticloadbalancingv2.CreateLoadBalancerInput{
-		Name:           aws.String(name),
-		Scheme:         "internet-facing",
-		SecurityGroups: []string{sg},
-		Subnets:        subnets,
-		Type:           "application",
-	})
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(alb.LoadBalancers[0].LoadBalancerArn), nil
-}
-
-func (i *Infrastructure) DestroyALB(ctx context.Context, arn string) error {
-	_, err := i.lb.DeleteLoadBalancer(
-		ctx,
-		&elasticloadbalancingv2.DeleteLoadBalancerInput{LoadBalancerArn: aws.String(arn)},
-	)
-	return err
-}
-
-func (i *Infrastructure) CreateSecurityGroup(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) DestroySecurityGroup(ctx context.Context, id string) error {
-	_, err := i.ec2.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: aws.String(id)})
-	return err
-}
-
-func (i *Infrastructure) CreateIAMRole(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (i *Infrastructure) DeleteIAMRole(ctx context.Context, name string) error {
-	_, err := i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
-	return err
-}
-
 // CreateInternetGateway creates a new internet gateway and
 // attaches it to the specified VPC.
 func (i *Infrastructure) CreateInternetGateway(ctx context.Context, vpc string) (string, error) {
-	g, err := i.ec2.CreateInternetGateway(ctx, &ec2.CreateInternetGatewayInput{TagSpecifications: nil})
+	g, err := i.ec2.CreateInternetGateway(ctx, &ec2.CreateInternetGatewayInput{})
 	if err != nil {
 		return "", err
 	}
@@ -192,6 +106,60 @@ func (i *Infrastructure) CreatePublicRouteTable(ctx context.Context, vpc string,
 // DestroyPublicRouteTable deletes the given route table associated with an internet gateway
 func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string) error {
 	_, err := i.ec2.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{RouteTableId: aws.String(id)})
+	return err
+}
+
+// CreateSubnet creates a subnet in the given VPC-AZ.
+// It calculates & uses the next available CIDR based on specified frozen bits.
+// eg- if frozen bits = 4 & VPC is /16, then it uses the next /20 subnet
+// (16 + 4 frozen) available in the VPC.
+func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix string, frozen int) (string, error) {
+	// todo: calculate CIDR
+	// todo: infer AZ
+
+	//s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
+	//	CidrBlock:        aws.String(cidr),
+	//	VpcId:            aws.String(vpc),
+	//	AvailabilityZone: aws.String(az),
+	//})
+	//if err != nil {
+	//	return "", err
+	//}
+	//return aws.ToString(s.Subnet.SubnetId), nil
+	return "", nil
+}
+
+// DestroySubnet deletes the given subnet
+func (i *Infrastructure) DestroySubnet(ctx context.Context, id string) error {
+	_, err := i.ec2.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: aws.String(id)})
+	return err
+}
+
+func (i *Infrastructure) CreateIAMRole(ctx context.Context) (string, error) {
+	return "", nil
+}
+
+func (i *Infrastructure) DeleteIAMRole(ctx context.Context, name string) error {
+	_, err := i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
+	return err
+}
+
+// CreateFargateCluster creates an ECS cluster with a default
+// provider strategy of Fargate.
+func (i *Infrastructure) CreateFargateCluster(ctx context.Context, name string) (string, error) {
+	c, err := i.ecs.CreateCluster(ctx, &ecs.CreateClusterInput{
+		CapacityProviders: []string{"FARGATE"},
+		ClusterName:       aws.String(name),
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(c.Cluster.ClusterArn), nil
+}
+
+// DestroyFargateCluster deletes a cluster which only contains Fargate capacity provider
+func (i *Infrastructure) DestroyFargateCluster(ctx context.Context, arn string) error {
+	_, err := i.ecs.DeleteCluster(ctx, &ecs.DeleteClusterInput{Cluster: aws.String(arn)})
 	return err
 }
 

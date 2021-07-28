@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const AlbSubnetCount = 2
-
 const (
 	StatusProvisioning = "provisioning"
 	StatusProvisioned  = "provisioned"
@@ -26,13 +24,9 @@ type Resources struct {
 	InternetGateway   string `json:"internet_gateway"`
 	DefaultRouteTable string `json:"default_route_table"`
 
-	ECSSecurityGroup string `json:"ecs_security_group"`
-	ECSCluster       string `json:"ecs_cluster"`
-	ComputeIAMRole   string `json:"compute_iam_role"`
-
-	AlbSecurityGroup string   `json:"lb_security_group"`
-	AlbSubnets       []string `json:"lb_subnets"`
-	Alb              string   `json:"load_balancer"`
+	ECSCluster      string `json:"ecs_cluster"`
+	TaskExecIAMRole string `json:"task_exec_iam_role"`
+	ComputeSubnet   string `json:"compute_subnet"`
 }
 
 type Event struct {

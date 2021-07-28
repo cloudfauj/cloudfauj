@@ -8,12 +8,6 @@ import (
 func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 	defer close(eventsCh)
 
-	if err := e.destroyALBInfra(ctx); err != nil {
-		eventsCh <- Event{Err: err}
-		return
-	}
-	eventsCh <- Event{Msg: "Destroyed Load balancer infrastructure"}
-
 	if err := e.destroyECSInfra(ctx); err != nil {
 		eventsCh <- Event{Err: err}
 		return
@@ -42,29 +36,14 @@ func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 	eventsCh <- Event{Msg: "Destroyed VPC"}
 }
 
-func (e *Environment) destroyALBInfra(ctx context.Context) error {
-	// destroy security group
-	if err := e.Infra.DestroySecurityGroup(ctx, e.Res.AlbSecurityGroup); err != nil {
-		return fmt.Errorf("failed to destroy ALB security group: %v", err)
-	}
-
-	// destroy ALB
-	if err := e.Infra.DestroyALB(ctx, e.Res.Alb); err != nil {
-		return fmt.Errorf("failed to destroy ALB: %v", err)
-	}
-
-	return nil
-}
-
 func (e *Environment) destroyECSInfra(ctx context.Context) error {
-	// destroy iam role(s)
-	if err := e.Infra.DeleteIAMRole(ctx, e.Res.ComputeIAMRole); err != nil {
-		return fmt.Errorf("failed to destroy IAM role for compute: %v", err)
+	if err := e.Infra.DestroySubnet(ctx, e.Res.ComputeSubnet); err != nil {
+		return fmt.Errorf("failed to destroy compute subnet: %v", err)
 	}
 
-	// destroy security group
-	if err := e.Infra.DestroySecurityGroup(ctx, e.Res.ECSSecurityGroup); err != nil {
-		return fmt.Errorf("failed to destroy ECS security group: %v", err)
+	// destroy iam role(s)
+	if err := e.Infra.DeleteIAMRole(ctx, e.Res.TaskExecIAMRole); err != nil {
+		return fmt.Errorf("failed to destroy IAM role for compute: %v", err)
 	}
 
 	// destroy ECS fargate cluster

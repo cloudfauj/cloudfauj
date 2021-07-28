@@ -12,13 +12,9 @@ const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	vpc_id VARCHAR(40),
 	internet_gateway VARCHAR(50),
 	default_route_table VARCHAR(50),
-	ecs_security_group VARCHAR(100),
 	ecs_cluster VARCHAR(100),
-	compute_iam_role VARCHAR(200),
-	lb_security_group VARCHAR(100),
-	lb_subnet_a VARCHAR(100),
-	lb_subnet_b VARCHAR(100),
-	load_balancer VARCHAR(200)
+	task_exec_iam_role VARCHAR(200),
+	compute_subnet VARCHAR(100)
 )`
 
 func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
@@ -40,14 +36,10 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 	vpc_id,
 	internet_gateway,
 	default_route_table,
-	ecs_security_group,
 	ecs_cluster,
-	compute_iam_role,
-	lb_security_group,
-	lb_subnet_a,
-	lb_subnet_b,
-	load_balancer
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	task_exec_iam_role,
+	compute_subnet
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -60,13 +52,9 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 		e.Res.VpcId,
 		e.Res.InternetGateway,
 		e.Res.DefaultRouteTable,
-		e.Res.ECSSecurityGroup,
 		e.Res.ECSCluster,
-		e.Res.ComputeIAMRole,
-		e.Res.AlbSecurityGroup,
-		e.Res.AlbSubnets[0],
-		e.Res.AlbSubnets[1],
-		e.Res.Alb,
+		e.Res.TaskExecIAMRole,
+		e.Res.ComputeSubnet,
 	)
 	if err != nil {
 		return err
@@ -81,13 +69,9 @@ SET
 	vpc_id = ?,
 	internet_gateway = ?,
 	default_route_table = ?,
-	ecs_security_group = ?,
 	ecs_cluster = ?,
-	compute_iam_role = ?,
-	lb_security_group = ?,
-	lb_subnet_a = ?,
-	lb_subnet_b = ?,
-	load_balancer = ?
+	task_exec_iam_role = ?,
+	compute_subnet = ?
 WHERE name = ?`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
@@ -100,13 +84,9 @@ WHERE name = ?`
 		e.Res.VpcId,
 		e.Res.InternetGateway,
 		e.Res.DefaultRouteTable,
-		e.Res.ECSSecurityGroup,
 		e.Res.ECSCluster,
-		e.Res.ComputeIAMRole,
-		e.Res.AlbSecurityGroup,
-		e.Res.AlbSubnets[0],
-		e.Res.AlbSubnets[1],
-		e.Res.Alb,
+		e.Res.TaskExecIAMRole,
+		e.Res.ComputeSubnet,
 		e.Name,
 	)
 	if err != nil {
@@ -139,9 +119,7 @@ func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
 }
 
 func (s *state) Environment(ctx context.Context, name string) (*environment.Environment, error) {
-	c := environment.AlbSubnetCount
-	e := &environment.Environment{Res: &environment.Resources{AlbSubnets: make([]string, c, c)}}
-
+	e := &environment.Environment{Res: &environment.Resources{}}
 	err := s.db.QueryRowContext(
 		ctx, "SELECT * FROM environments WHERE name = ?", name,
 	).Scan(
@@ -150,13 +128,9 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 		&e.Res.VpcId,
 		&e.Res.InternetGateway,
 		&e.Res.DefaultRouteTable,
-		&e.Res.ECSSecurityGroup,
 		&e.Res.ECSCluster,
-		&e.Res.ComputeIAMRole,
-		&e.Res.AlbSecurityGroup,
-		&e.Res.AlbSubnets[0],
-		&e.Res.AlbSubnets[1],
-		&e.Res.Alb,
+		&e.Res.TaskExecIAMRole,
+		&e.Res.ComputeSubnet,
 	)
 	if err != nil {
 		// return nil response without any error if no such env found
