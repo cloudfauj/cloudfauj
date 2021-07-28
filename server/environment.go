@@ -116,6 +116,8 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	env.Infra = s.infra
+
 	eventsCh := make(chan environment.Event)
 	go env.Destroy(r.Context(), eventsCh)
 

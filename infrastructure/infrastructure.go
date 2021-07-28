@@ -79,8 +79,17 @@ func (i *Infrastructure) CreateInternetGateway(ctx context.Context, vpc string) 
 	return aws.ToString(gid), nil
 }
 
-func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, id string) error {
-	_, err := i.ec2.DeleteInternetGateway(ctx, &ec2.DeleteInternetGatewayInput{InternetGatewayId: aws.String(id)})
+// DestroyInternetGateway detaches the internet gateway from its VPC and deletes it.
+func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, vpc, gateway string) error {
+	gid := aws.String(gateway)
+	_, err := i.ec2.DetachInternetGateway(
+		ctx,
+		&ec2.DetachInternetGatewayInput{VpcId: aws.String(vpc), InternetGatewayId: gid},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to detach internet gateway from vpc: %v", err)
+	}
+	_, err = i.ec2.DeleteInternetGateway(ctx, &ec2.DeleteInternetGatewayInput{InternetGatewayId: gid})
 	return err
 }
 
