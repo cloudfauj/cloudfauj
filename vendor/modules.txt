@@ -1,3 +1,6 @@
+# github.com/apparentlymart/go-cidr v1.1.0
+## explicit
+github.com/apparentlymart/go-cidr/cidr
 # github.com/aws/aws-sdk-go-v2 v1.7.1
 ## explicit
 github.com/aws/aws-sdk-go-v2
@@ -45,11 +48,6 @@ github.com/aws/aws-sdk-go-v2/service/ec2/types
 github.com/aws/aws-sdk-go-v2/service/ecs
 github.com/aws/aws-sdk-go-v2/service/ecs/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ecs/types
-# github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.5.0
-## explicit
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing/types
 # github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.5.0
 ## explicit
 github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2

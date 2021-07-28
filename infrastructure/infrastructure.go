@@ -2,19 +2,24 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/sirupsen/logrus"
+	"net"
 )
 
 const (
-	Az1Suffix = "a"
-	Az2Suffix = "b"
-	Az3Suffix = "c"
+	VPCFrozenBits  = 16
+	Az1Suffix      = "a"
+	Az2Suffix      = "b"
+	MinVPCCidr     = "10.0.0.0/16"
+	LargestVPCCidr = "10.0.0.0/8"
 )
 
 type Infrastructure struct {
@@ -35,16 +40,18 @@ func New(
 	return &Infrastructure{log: l, ec2: ec2, iam: i, ecs: ecs, lb: lb}
 }
 
-// CreateVPC creates a new VPC in aws with an available /16 CIDR
+// CreateVPC creates a new VPC in aws with an available CIDR
 func (i *Infrastructure) CreateVPC(ctx context.Context) (string, error) {
-	// todo: find available cidr
-	//res, err := i.ec2.CreateVpc(ctx, &ec2.CreateVpcInput{CidrBlock: nil})
-	//if err != nil {
-	//	return "", err
-	//}
-	//return aws.ToString(res.Vpc.VpcId), nil
-
-	return "", nil
+	c, err := i.nextAvailableCIDR(ctx)
+	i.log.Debugf("Using CIDR %s", c)
+	if err != nil {
+		return "", fmt.Errorf("failed to calculate CIDR: %v", err)
+	}
+	res, err := i.ec2.CreateVpc(ctx, &ec2.CreateVpcInput{CidrBlock: aws.String(c)})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(res.Vpc.VpcId), nil
 }
 
 // DestroyVPC deletes the given VPC
@@ -61,15 +68,16 @@ func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc, azSuffix s
 	// todo: calculate CIDR
 	// todo: infer AZ
 
-	s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
-		CidrBlock:        aws.String(cidr),
-		VpcId:            aws.String(vpc),
-		AvailabilityZone: aws.String(az),
-	})
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(s.Subnet.SubnetId), nil
+	//s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
+	//	CidrBlock:        aws.String(cidr),
+	//	VpcId:            aws.String(vpc),
+	//	AvailabilityZone: aws.String(az),
+	//})
+	//if err != nil {
+	//	return "", err
+	//}
+	//return aws.ToString(s.Subnet.SubnetId), nil
+	return "", nil
 }
 
 // DestroySubnet deletes the given subnet
@@ -185,4 +193,32 @@ func (i *Infrastructure) CreatePublicRouteTable(ctx context.Context, vpc string,
 func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string) error {
 	_, err := i.ec2.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{RouteTableId: aws.String(id)})
 	return err
+}
+
+// nextAvailableCIDR returns the first /16 CIDR available for use in the target AWS account-region
+func (i *Infrastructure) nextAvailableCIDR(ctx context.Context) (string, error) {
+	// todo: paginate to ensure we have all VPCs
+	res, err := i.ec2.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{})
+	if err != nil {
+		return "", err
+	}
+	existingCidrs := make([]*net.IPNet, len(res.Vpcs))
+	for j, vpc := range res.Vpcs {
+		_, ipn, _ := net.ParseCIDR(aws.ToString(vpc.CidrBlock))
+		existingCidrs[j] = ipn
+	}
+
+	_, super, _ := net.ParseCIDR(LargestVPCCidr)
+	_, proposed, _ := net.ParseCIDR(MinVPCCidr)
+	for {
+		all := append(existingCidrs, proposed)
+		if err := cidr.VerifyNoOverlap(all, super); err == nil {
+			return proposed.String(), nil
+		}
+		next, maxed := cidr.NextSubnet(proposed, VPCFrozenBits)
+		if maxed || (next.IP[0] > 10) {
+			return "", errors.New("no CIDRs available")
+		}
+		proposed = next
+	}
 }
