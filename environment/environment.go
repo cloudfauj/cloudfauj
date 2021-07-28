@@ -20,9 +20,8 @@ type Environment struct {
 }
 
 type Resources struct {
-	VpcId             string `json:"vpc_id"`
-	InternetGateway   string `json:"internet_gateway"`
-	DefaultRouteTable string `json:"default_route_table"`
+	VpcId           string `json:"vpc_id"`
+	InternetGateway string `json:"internet_gateway"`
 
 	ECSCluster      string `json:"ecs_cluster"`
 	TaskExecIAMRole string `json:"task_exec_iam_role"`

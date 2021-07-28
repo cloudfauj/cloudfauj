@@ -8,7 +8,6 @@ import (
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	defer close(eventsCh)
 
-	// create VPC
 	v, err := e.Infra.CreateVPC(ctx)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create VPC: %v", err)}
@@ -17,7 +16,6 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	e.Res.VpcId = v
 	eventsCh <- Event{Msg: "Created VPC"}
 
-	// create internet gateway for VPC
 	g, err := e.Infra.CreateInternetGateway(ctx, e.Res.VpcId)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create internet gateway: %v", err)}
@@ -26,14 +24,11 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	e.Res.InternetGateway = g
 	eventsCh <- Event{Msg: "Created Internet Gateway"}
 
-	// create default route table
-	rt, err := e.Infra.CreatePublicRouteTable(ctx, e.Res.VpcId, e.Res.InternetGateway)
-	if err != nil {
+	if err := e.Infra.AddGatewayRoute(ctx, e.Res.VpcId, e.Res.InternetGateway); err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create default route table: %v", err)}
 		return
 	}
-	e.Res.DefaultRouteTable = rt
-	eventsCh <- Event{Msg: "Created default route table"}
+	eventsCh <- Event{Msg: "Setup routing"}
 
 	if err := e.createECSInfra(ctx); err != nil {
 		eventsCh <- Event{Err: err}

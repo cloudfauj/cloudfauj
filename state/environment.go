@@ -11,7 +11,6 @@ const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	status VARCHAR(25) NOT NULL,
 	vpc_id VARCHAR(40),
 	internet_gateway VARCHAR(50),
-	default_route_table VARCHAR(50),
 	ecs_cluster VARCHAR(100),
 	task_exec_iam_role VARCHAR(200),
 	compute_subnet VARCHAR(100)
@@ -35,11 +34,10 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 	status,
 	vpc_id,
 	internet_gateway,
-	default_route_table,
 	ecs_cluster,
 	task_exec_iam_role,
 	compute_subnet
-) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
+) VALUES(?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -51,7 +49,6 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 		e.Status,
 		e.Res.VpcId,
 		e.Res.InternetGateway,
-		e.Res.DefaultRouteTable,
 		e.Res.ECSCluster,
 		e.Res.TaskExecIAMRole,
 		e.Res.ComputeSubnet,
@@ -68,7 +65,6 @@ SET
 	status = ?,
 	vpc_id = ?,
 	internet_gateway = ?,
-	default_route_table = ?,
 	ecs_cluster = ?,
 	task_exec_iam_role = ?,
 	compute_subnet = ?
@@ -83,7 +79,6 @@ WHERE name = ?`
 		e.Status,
 		e.Res.VpcId,
 		e.Res.InternetGateway,
-		e.Res.DefaultRouteTable,
 		e.Res.ECSCluster,
 		e.Res.TaskExecIAMRole,
 		e.Res.ComputeSubnet,
@@ -127,7 +122,6 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 		&e.Status,
 		&e.Res.VpcId,
 		&e.Res.InternetGateway,
-		&e.Res.DefaultRouteTable,
 		&e.Res.ECSCluster,
 		&e.Res.TaskExecIAMRole,
 		&e.Res.ComputeSubnet,

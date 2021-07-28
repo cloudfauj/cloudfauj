@@ -7,6 +7,7 @@ import (
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -93,27 +94,31 @@ func (i *Infrastructure) DestroyInternetGateway(ctx context.Context, vpc, gatewa
 	return err
 }
 
-// CreatePublicRouteTable creates a public route table for a vpc
-// by routing all traffic via its internet gateway.
-func (i *Infrastructure) CreatePublicRouteTable(ctx context.Context, vpc string, igw string) (string, error) {
-	rt, err := i.ec2.CreateRouteTable(ctx, &ec2.CreateRouteTableInput{VpcId: aws.String(vpc)})
+// AddGatewayRoute adds an internet gateway as the router for all public traffic
+// in a VPC's default route table.
+func (i *Infrastructure) AddGatewayRoute(ctx context.Context, vpc string, igw string) error {
+	rt, err := i.vpcMainRT(ctx, vpc)
 	if err != nil {
-		return "", err
+		return err
 	}
 	_, err = i.ec2.CreateRoute(ctx, &ec2.CreateRouteInput{
-		RouteTableId:         rt.RouteTable.RouteTableId,
+		RouteTableId:         rt.RouteTableId,
 		DestinationCidrBlock: aws.String("0.0.0.0/0"),
 		GatewayId:            aws.String(igw),
 	})
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(rt.RouteTable.RouteTableId), nil
+	return err
 }
 
-// DestroyPublicRouteTable deletes the given route table associated with an internet gateway
-func (i *Infrastructure) DestroyPublicRouteTable(ctx context.Context, id string) error {
-	_, err := i.ec2.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{RouteTableId: aws.String(id)})
+// RemoveGatewayRoute deletes the given route table associated with an internet gateway
+func (i *Infrastructure) RemoveGatewayRoute(ctx context.Context, vpc string) error {
+	rt, err := i.vpcMainRT(ctx, vpc)
+	if err != nil {
+		return err
+	}
+	_, err = i.ec2.DeleteRoute(ctx, &ec2.DeleteRouteInput{
+		RouteTableId:         rt.RouteTableId,
+		DestinationCidrBlock: aws.String("0.0.0.0/0"),
+	})
 	return err
 }
 
@@ -232,4 +237,18 @@ func (i *Infrastructure) nextAvailableCIDR(ctx context.Context) (string, error) 
 		}
 		proposed = next
 	}
+}
+
+// vpcMainRT returns the main route table associated with the given VPC
+func (i *Infrastructure) vpcMainRT(ctx context.Context, vpc string) (types.RouteTable, error) {
+	rt, err := i.ec2.DescribeRouteTables(ctx, &ec2.DescribeRouteTablesInput{
+		Filters: []types.Filter{
+			{Name: aws.String("vpc-id"), Values: []string{vpc}},
+			{Name: aws.String("association.main"), Values: []string{"true"}},
+		},
+	})
+	if err != nil {
+		return types.RouteTable{}, fmt.Errorf("failed to get VPC's main route table: %v", err)
+	}
+	return rt.RouteTables[0], nil
 }

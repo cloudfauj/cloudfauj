@@ -15,7 +15,7 @@ func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 	eventsCh <- Event{Msg: "Destroyed ECS fargate infrastructure"}
 
 	// destroy public route table
-	if err := e.Infra.DestroyPublicRouteTable(ctx, e.Res.DefaultRouteTable); err != nil {
+	if err := e.Infra.RemoveGatewayRoute(ctx, e.Res.VpcId); err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to destroy default route table: %v", err)}
 		return
 	}
