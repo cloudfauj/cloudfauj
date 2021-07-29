@@ -103,6 +103,11 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
+	if env.Status != environment.StatusProvisioned {
+		s.log.WithField("name", envName).Debug("Environment is not in provisioned state")
+		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		return
+	}
 
 	// todo: if even a single app is running in this env, reject
 	//  destroy request.
@@ -115,7 +120,6 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
-
 	env.Infra = s.infra
 
 	eventsCh := make(chan environment.Event)
