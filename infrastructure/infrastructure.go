@@ -23,11 +23,12 @@ const (
 )
 
 type Infrastructure struct {
-	log *logrus.Logger
-	ec2 *ec2.Client
-	iam *iam.Client
-	ecs *ecs.Client
-	lb  *elasticloadbalancingv2.Client
+	region string
+	log    *logrus.Logger
+	ec2    *ec2.Client
+	iam    *iam.Client
+	ecs    *ecs.Client
+	lb     *elasticloadbalancingv2.Client
 }
 
 func New(
@@ -36,8 +37,11 @@ func New(
 	ecs *ecs.Client,
 	i *iam.Client,
 	lb *elasticloadbalancingv2.Client,
+	region string,
 ) *Infrastructure {
-	return &Infrastructure{log: l, ec2: ec2, iam: i, ecs: ecs, lb: lb}
+	return &Infrastructure{
+		log: l, ec2: ec2, iam: i, ecs: ecs, lb: lb, region: region,
+	}
 }
 
 // CreateVPC creates a new VPC in aws with an available CIDR

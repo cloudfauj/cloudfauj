@@ -3,8 +3,7 @@ Automated Infrastructure provisioning in your own cloud
 
 TODO
 
-- write infra methods for env creation/deletion - 31 july
-- write infra methods for app creation - 6 aug
+- write infra methods for app creation/deletion - 6 aug
 - implement deployment logs management - 9 aug
 - cli server: setup local dir for all storage - 13 aug
 - polish the whole user experience - 19 aug

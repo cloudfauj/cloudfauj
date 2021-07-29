@@ -22,7 +22,7 @@ type Application struct {
 		Memory int `json:"memory"`
 
 		Network struct {
-			BindPort int `json:"bind_port" mapstructure:"bind_port"`
+			BindPort int32 `json:"bind_port" mapstructure:"bind_port"`
 		} `json:"network"`
 	} `json:"resources"`
 

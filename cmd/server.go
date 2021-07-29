@@ -69,6 +69,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		ecs.NewFromConfig(awsCfg),
 		iam.NewFromConfig(awsCfg),
 		elasticloadbalancingv2.NewFromConfig(awsCfg),
+		awsCfg.Region,
 	)
 
 	apiServer := server.New(&srvCfg, log, storage, infra)

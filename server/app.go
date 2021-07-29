@@ -76,7 +76,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 		// provision infrastructure for app
 		eventsCh := make(chan *Event)
-		go s.provisionInfra(r.Context(), spec.App, eventsCh)
+		go s.provisionInfra(r.Context(), &spec, e, eventsCh)
 
 		for e := range eventsCh {
 			if e.Err != nil {
@@ -125,24 +125,39 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 
-func (s *server) provisionInfra(ctx context.Context, a *application.Application, e chan<- *Event) {
+func (s *server) provisionInfra(
+	ctx context.Context,
+	d *deployment.Spec,
+	env *environment.Environment,
+	e chan<- *Event,
+) {
 	defer close(e)
 
-	// (user-provided) ecr repo for docker image
-	// security group that only opens the bind_port for ingress
-	// auto-assigned public ip
+	// PROVISION
+	// create task definition
+	//  fargate compatibility, task exec role, log config = cloudwatch, user-provided artifact
+	// create security group with bind_port allowed
+	// create ecs service
+	//  fargate, pub ip enabled
 
-	i := &infra.AppInfra{App: a.Name}
+	i := &infra.AppInfra{App: d.App.Name}
 
 	// ensure public visibility
-	if a.Visibility != application.VisibilityPublic {
+	if d.App.Visibility != application.VisibilityPublic {
 		e <- &Event{Err: errors.New("only public visibility is supported for app")}
 		return
 	}
 	e <- &Event{Msg: "provisioning infrastructure for public application"}
 
-	// create task definition
-	td, err := s.infra.CreateTaskDefinition(ctx)
+	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
+		Env:          env.Name,
+		Service:      d.App.Name,
+		TaskExecRole: env.Res.TaskExecIAMRole,
+		Image:        d.Artifact,
+		Cpu:          d.App.Resources.Cpu,
+		Memory:       d.App.Resources.Memory,
+		BindPort:     d.App.Resources.Network.BindPort,
+	})
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to create task definition: %v", err)}
 		return
@@ -150,36 +165,13 @@ func (s *server) provisionInfra(ctx context.Context, a *application.Application,
 	i.EcsTaskDefinition = td
 	e <- &Event{Msg: "created ECS task definition"}
 
-	// create target group
-	tg, err := s.infra.CreateTargetGroup(ctx)
+	sg, err := s.infra.CreateSecurityGroup(ctx, env.Name, d.App.Name, env.Res.VpcId, d.App.Resources.Network.BindPort)
 	if err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to create target group: %v", err)}
+		e <- &Event{Err: fmt.Errorf("failed to create security group: %v", err)}
 		return
 	}
-	i.TargetGroup = tg
-	e <- &Event{Msg: "created target group"}
-
-	// attach target group to ALB
-	rule, err := s.infra.AttachTargetGroup(ctx, tg)
-	if err != nil {
-		e <- &Event{
-			Err: fmt.Errorf("failed to attach target group to load balancer: %v", err),
-		}
-		return
-	}
-	i.AlbListenerRule = rule
-	e <- &Event{Msg: "attached target group to load balancer"}
-
-	// create DNS record
-	rec, err := s.infra.CreateDNSRecord(ctx)
-	if err != nil {
-		e <- &Event{
-			Err: fmt.Errorf("failed to create DNS record: %v", err),
-		}
-		return
-	}
-	i.DNSRecord = rec
-	e <- &Event{Msg: "created DNS record"}
+	i.SecurityGroup = sg
+	e <- &Event{Msg: "created security group"}
 
 	// create ECS service
 	srv, err := s.infra.CreateECSService(ctx)
@@ -205,6 +197,11 @@ func (s *server) provisionInfra(ctx context.Context, a *application.Application,
 
 func (s *server) deployApp(ctx context.Context, spec *deployment.Spec, e chan<- *Event) {
 	defer close(e)
+
+	// DEPLOY
+	// create task def
+	//  update artifact
+	// update ecs service with new taskdef
 
 	// ensure public visibility
 	if spec.App.Visibility != application.VisibilityPublic {
