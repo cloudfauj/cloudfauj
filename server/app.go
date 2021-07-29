@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
+	"github.com/cloudfauj/cloudfauj/environment"
 	infra "github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -28,16 +29,20 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ensure target environment exists
-	ok, err := s.state.CheckEnvExists(r.Context(), spec.TargetEnv)
+	e, err := s.state.Environment(r.Context(), spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.TargetEnv).Errorf("Failed to check if target env exists: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
-	if !ok {
+	if e == nil {
 		s.log.WithField("name", spec.TargetEnv).Debug("Deployment target environment does not exist")
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		return
+	}
+	if e.Status != environment.StatusProvisioned {
+		s.log.WithField("name", spec.TargetEnv).Error("Environment is not ready to be deployed to")
+		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
 
