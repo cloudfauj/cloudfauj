@@ -65,6 +65,16 @@ func (p *TaskDefintionParams) RoundedMemory() string {
 	return strconv.Itoa(rng[len(rng)-1])
 }
 
+// ECSServiceParams contains the parameters supplied to CreateTaskDefinition()
+type ECSServiceParams struct {
+	Env           string
+	Service       string
+	Cluster       string
+	TaskDef       string
+	ComputeSubnet string
+	SecurityGroup string
+}
+
 // CreateTaskDefinition creates a new Fargate-compatible task definition.
 // If a task def with same family name already exists, this method creates
 // a new revision of it.
@@ -138,8 +148,31 @@ func (i *Infrastructure) DestroySecurityGroup(ctx context.Context, id string) er
 	return err
 }
 
-func (i *Infrastructure) CreateECSService(ctx context.Context) (string, error) {
-	return "", nil
+func (i *Infrastructure) CreateECSService(ctx context.Context, p *ECSServiceParams) (string, error) {
+	s, err := i.ecs.CreateService(ctx, &ecs.CreateServiceInput{
+		ServiceName:  aws.String(p.Service),
+		Cluster:      aws.String(p.Cluster),
+		DesiredCount: aws.Int32(1),
+		LaunchType:   types.LaunchTypeFargate,
+		DeploymentConfiguration: &types.DeploymentConfiguration{
+			DeploymentCircuitBreaker: &types.DeploymentCircuitBreaker{Enable: true, Rollback: true},
+			MaximumPercent:           aws.Int32(200),
+			MinimumHealthyPercent:    aws.Int32(100),
+		},
+		NetworkConfiguration: &types.NetworkConfiguration{
+			AwsvpcConfiguration: &types.AwsVpcConfiguration{
+				Subnets:        []string{p.ComputeSubnet},
+				AssignPublicIp: types.AssignPublicIpEnabled,
+				SecurityGroups: []string{p.SecurityGroup},
+			},
+		},
+		SchedulingStrategy: types.SchedulingStrategyReplica,
+		TaskDefinition:     aws.String(p.TaskDef),
+	})
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(s.Service.ServiceArn), nil
 }
 
 func (i *Infrastructure) UpdateECSService(ctx context.Context, t string) error {

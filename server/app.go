@@ -133,13 +133,6 @@ func (s *server) provisionInfra(
 ) {
 	defer close(e)
 
-	// PROVISION
-	// create task definition
-	//  fargate compatibility, task exec role, log config = cloudwatch, user-provided artifact
-	// create security group with bind_port allowed
-	// create ecs service
-	//  fargate, pub ip enabled
-
 	i := &infra.AppInfra{App: d.App.Name}
 
 	// ensure public visibility
@@ -173,8 +166,14 @@ func (s *server) provisionInfra(
 	i.SecurityGroup = sg
 	e <- &Event{Msg: "created security group"}
 
-	// create ECS service
-	srv, err := s.infra.CreateECSService(ctx)
+	srv, err := s.infra.CreateECSService(ctx, &infra.ECSServiceParams{
+		Env:           env.Name,
+		Service:       d.App.Name,
+		Cluster:       env.Res.ECSCluster,
+		TaskDef:       i.EcsTaskDefinition,
+		ComputeSubnet: env.Res.ComputeSubnet,
+		SecurityGroup: i.SecurityGroup,
+	})
 	if err != nil {
 		e <- &Event{
 			Err: fmt.Errorf("failed to create ECS service: %v", err),
