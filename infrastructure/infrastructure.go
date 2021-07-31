@@ -175,10 +175,29 @@ func (i *Infrastructure) CreateECSTaskExecIAMRole(ctx context.Context, name stri
 	}
 	_, err = i.iam.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
 		PolicyArn: aws.String(ECSTaskExecPolicy),
-		RoleName:  aws.String(name),
+		RoleName:  r.Role.RoleName,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to attach policy to role: %v", err)
+	}
+
+	p := `{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup"],
+      "Resource": "*"
+    }
+  ]
+}`
+	_, err = i.iam.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
+		RoleName:       r.Role.RoleName,
+		PolicyDocument: aws.String(p),
+		PolicyName:     aws.String(name + "-permissions"),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach inline policy to role: %v", err)
 	}
 	return aws.ToString(r.Role.Arn), nil
 }
@@ -191,6 +210,13 @@ func (i *Infrastructure) DeleteECSTaskExecIAMRole(ctx context.Context, name stri
 	})
 	if err != nil {
 		return fmt.Errorf("failed to detach policy from role: %v", err)
+	}
+	_, err = i.iam.DeleteRolePolicy(ctx, &iam.DeleteRolePolicyInput{
+		PolicyName: aws.String(name + "-permissions"),
+		RoleName:   aws.String(name),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete inline policy from role: %v", err)
 	}
 	_, err = i.iam.DeleteRole(ctx, &iam.DeleteRoleInput{RoleName: aws.String(name)})
 	return err
