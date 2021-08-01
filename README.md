@@ -6,9 +6,16 @@ TODO
 - write infra methods for app creation/deletion/deployment - 6 aug
 - implement deployment logs management - 9 aug
 - cli server: setup local dir for all storage - 13 aug
-- polish the whole user experience - 19 aug
+- polish the whole user experience, tail ecs deployment logs - 19 aug
 - write documentation - 25 aug
 - launch v1 - 25 aug
+
+post v1:
+- infra management via terraform
+- automatic tls + load balancer
+- route53 dns integration so we can provide url for app
+
+
 
 - read up on websocket & gorilla lib
 

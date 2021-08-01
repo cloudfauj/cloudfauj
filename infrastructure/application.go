@@ -175,6 +175,17 @@ func (i *Infrastructure) CreateECSService(ctx context.Context, p *ECSServicePara
 	return aws.ToString(s.Service.ServiceArn), nil
 }
 
+// DestroyECSService destroys an ECS service regardless of the number
+// of tasks running as part of it.
+func (i *Infrastructure) DestroyECSService(ctx context.Context, service, cluster string) error {
+	_, err := i.ecs.DeleteService(ctx, &ecs.DeleteServiceInput{
+		Service: aws.String(service),
+		Cluster: aws.String(cluster),
+		Force:   aws.Bool(true),
+	})
+	return err
+}
+
 // UpdateECSService updates an ECS service with a task definition, therefore triggering
 // a deployment in it.
 func (i *Infrastructure) UpdateECSService(ctx context.Context, s, c, t string) error {

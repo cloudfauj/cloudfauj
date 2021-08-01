@@ -133,13 +133,13 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		logrus.Fields{"app": app, "env": env},
 	).Info("App deletion request received")
 
-	y, err := s.state.CheckEnvExists(r.Context(), env)
+	envState, err := s.state.Environment(r.Context(), env)
 	if err != nil {
-		s.log.Errorf("Failed to check if env exists: %v", err)
+		s.log.Errorf("Failed to get environment from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if !y {
+	if envState == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -162,7 +162,7 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.destroyInfra(r.Context(), appInfra); err != nil {
+	if err := s.destroyInfra(r.Context(), appInfra, envState); err != nil {
 		s.log.Errorf("Failed to destroy app infra: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -296,4 +296,17 @@ func (s *server) deployApp(
 	// todo: tail deployment logs
 
 	e <- &Event{Msg: "deployment succeeded"}
+}
+
+func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *environment.Environment) error {
+	// todo: determine if we want to delete task definition(s) as well
+	//  this has been left out for now
+
+	if err := s.infra.DestroySecurityGroup(ctx, app.SecurityGroup); err != nil {
+		return fmt.Errorf("failed to delete security group: %v", err)
+	}
+	if err := s.infra.DestroyECSService(ctx, app.ECSService, env.Res.ECSCluster); err != nil {
+		return fmt.Errorf("failed to delete ECS Service: %v", err)
+	}
+	return nil
 }
