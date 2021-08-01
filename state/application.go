@@ -109,3 +109,8 @@ func (s *state) App(ctx context.Context, name string) (*application.Application,
 	}
 	return a, nil
 }
+
+func (s *state) DeleteApp(ctx context.Context, name string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM applications WHERE name = ?", name)
+	return err
+}

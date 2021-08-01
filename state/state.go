@@ -31,10 +31,12 @@ type State interface {
 	CreateApp(context.Context, *application.Application) error
 	UpdateApp(context.Context, *application.Application) error
 	App(context.Context, string) (*application.Application, error)
+	DeleteApp(context.Context, string) error
 
 	CreateAppInfra(context.Context, *infrastructure.AppInfra) error
 	UpdateAppInfra(context.Context, *infrastructure.AppInfra) error
 	AppInfra(context.Context, string) (*infrastructure.AppInfra, error)
+	DeleteAppInfra(context.Context, string) error
 }
 
 type state struct {

@@ -139,8 +139,5 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 
 func (s *state) DeleteEnvironment(ctx context.Context, name string) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM environments WHERE name = ?", name)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

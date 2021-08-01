@@ -74,3 +74,8 @@ func (s *state) AppInfra(ctx context.Context, name string) (*infrastructure.AppI
 	}
 	return &i, nil
 }
+
+func (s *state) DeleteAppInfra(ctx context.Context, name string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM app_infra WHERE app = ?", name)
+	return err
+}
