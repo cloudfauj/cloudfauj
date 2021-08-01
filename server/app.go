@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
@@ -302,11 +303,24 @@ func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *env
 	// todo: determine if we want to delete task definition(s) as well
 	//  this has been left out for now
 
-	if err := s.infra.DestroySecurityGroup(ctx, app.SecurityGroup); err != nil {
-		return fmt.Errorf("failed to delete security group: %v", err)
+	if err := s.infra.DrainECSService(ctx, app.ECSService, env.Res.ECSCluster); err != nil {
+		return fmt.Errorf("failed to drain ECS Service: %v", err)
+	}
+	// todo: improve the timeout logic
+	for i := 0; i < 12; i++ {
+		s.log.Info("Draining ECS service...")
+		time.Sleep(time.Second * 5)
+		c, err := s.infra.ECSServiceTaskCount(ctx, app.ECSService, env.Res.ECSCluster)
+		if err == nil && c == 0 {
+			s.log.Info("Done")
+			break
+		}
 	}
 	if err := s.infra.DestroyECSService(ctx, app.ECSService, env.Res.ECSCluster); err != nil {
 		return fmt.Errorf("failed to delete ECS Service: %v", err)
+	}
+	if err := s.infra.DestroySecurityGroup(ctx, app.SecurityGroup); err != nil {
+		return fmt.Errorf("failed to delete security group: %v", err)
 	}
 	return nil
 }
