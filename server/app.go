@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
 	infra "github.com/cloudfauj/cloudfauj/infrastructure"
@@ -101,7 +103,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 	// provision infrastructure for app
 	eventsCh := make(chan *Event)
-	go s.deployApp(r.Context(), &spec, eventsCh)
+	go s.deployApp(r.Context(), &spec, app, e, eventsCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -184,17 +186,35 @@ func (s *server) provisionInfra(
 	// todo: tail ecs deployment logs
 }
 
-func (s *server) deployApp(ctx context.Context, spec *deployment.Spec, e chan<- *Event) {
+func (s *server) deployApp(
+	ctx context.Context,
+	d *deployment.Spec,
+	originalApp *application.Application,
+	env *environment.Environment,
+	e chan<- *Event,
+) {
 	defer close(e)
 
-	i, err := s.state.AppInfra(ctx, spec.App.Name)
+	if d.App.Resources.Network.BindPort != originalApp.Resources.Network.BindPort {
+		e <- &Event{Err: errors.New("changing bind port of application is not supported")}
+		return
+	}
+
+	i, err := s.state.AppInfra(ctx, d.App.Name)
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to fetch app state: %v", err)}
 		return
 	}
 
-	// create task definition
-	td, err := s.infra.CreateTaskDefinition(ctx)
+	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
+		Env:          env.Name,
+		Service:      d.App.Name,
+		TaskExecRole: env.Res.TaskExecIAMRole,
+		Image:        d.Artifact,
+		Cpu:          d.App.Resources.Cpu,
+		Memory:       d.App.Resources.Memory,
+		BindPort:     d.App.Resources.Network.BindPort,
+	})
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to create new task definition: %v", err)}
 		return
@@ -202,14 +222,12 @@ func (s *server) deployApp(ctx context.Context, spec *deployment.Spec, e chan<- 
 	i.EcsTaskDefinition = td
 	e <- &Event{Msg: "created new ECS task definition"}
 
-	// update ecs service
 	if err := s.infra.UpdateECSService(ctx, i.EcsTaskDefinition); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to update ECS service: %v", err)}
 		return
 	}
 	e <- &Event{Msg: "updated ECS service"}
 
-	// update app state with new taskdef
 	if err := s.state.UpdateAppInfra(ctx, i); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to update app infra state: %v", err)}
 		return
