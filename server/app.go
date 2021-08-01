@@ -222,7 +222,7 @@ func (s *server) deployApp(
 	i.EcsTaskDefinition = td
 	e <- &Event{Msg: "created new ECS task definition"}
 
-	if err := s.infra.UpdateECSService(ctx, i.EcsTaskDefinition); err != nil {
+	if err := s.infra.UpdateECSService(ctx, d.App.Name, env.Res.ECSCluster, i.EcsTaskDefinition); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to update ECS service: %v", err)}
 		return
 	}

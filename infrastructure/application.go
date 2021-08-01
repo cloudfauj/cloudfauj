@@ -175,8 +175,16 @@ func (i *Infrastructure) CreateECSService(ctx context.Context, p *ECSServicePara
 	return aws.ToString(s.Service.ServiceArn), nil
 }
 
-func (i *Infrastructure) UpdateECSService(ctx context.Context, t string) error {
-	return nil
+// UpdateECSService updates an ECS service with a task definition, therefore triggering
+// a deployment in it.
+func (i *Infrastructure) UpdateECSService(ctx context.Context, s, c, t string) error {
+	_, err := i.ecs.UpdateService(ctx, &ecs.UpdateServiceInput{
+		Service:            aws.String(s),
+		Cluster:            aws.String(c),
+		ForceNewDeployment: false,
+		TaskDefinition:     aws.String(t),
+	})
+	return err
 }
 
 // memRange returns discrete memory values (MB) from start to end
