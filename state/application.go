@@ -56,11 +56,11 @@ func (s *state) CheckAppExists(ctx context.Context, name string) (bool, error) {
 func (s *state) UpdateApp(ctx context.Context, app *application.Application) error {
 	q := `UPDATE applications
 SET
-	type = ?
-	visibility = ?
-	health_path = ?
-	cpu = ?
-	memory = ?
+	type = ?,
+	visibility = ?,
+	health_path = ?,
+	cpu = ?,
+	memory = ?,
 	bind_port = ?
 WHERE name = ?`
 
