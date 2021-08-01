@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
 	infra "github.com/cloudfauj/cloudfauj/infrastructure"
@@ -46,17 +44,6 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// create new deployment in state
-	d := deployment.New(&spec)
-	id, err := s.state.CreateDeployment(r.Context(), d)
-	if err != nil {
-		s.log.WithField("app", spec.App.Name).Errorf("Failed to create deployment: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
-		return
-	}
-	d.Id = id
-	// todo: log ID in dep log & send to websocket
-
 	// get app from state if it already exists
 	app, err := s.state.App(r.Context(), spec.App.Name)
 	if err != nil {
@@ -80,18 +67,27 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 		for e := range eventsCh {
 			if e.Err != nil {
-				d.Fail(e.Err)
-				s.state.UpdateDeploymentStatus(r.Context(), d.Status)
-
-				m := []byte(fmt.Sprintf("Deployment failed: %v", e.Err))
+				m := []byte(fmt.Sprintf("Creation failed: %v", e.Err))
 				conn.WriteMessage(websocket.TextMessage, m)
-
 				return
 			}
-			d.AppendLog(e.Msg)
 			conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 		}
+
+		_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+		return
 	}
+
+	// create new deployment in state
+	d := deployment.New(&spec)
+	id, err := s.state.CreateDeployment(r.Context(), d)
+	if err != nil {
+		s.log.WithField("app", spec.App.Name).Errorf("Failed to create deployment: %v", err)
+		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		return
+	}
+	d.Id = id
+	// todo: log ID in dep log & send to websocket
 
 	s.log.
 		WithFields(logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id}).
@@ -134,12 +130,6 @@ func (s *server) provisionInfra(
 	defer close(e)
 
 	i := &infra.AppInfra{App: d.App.Name}
-
-	// ensure public visibility
-	if d.App.Visibility != application.VisibilityPublic {
-		e <- &Event{Err: errors.New("only public visibility is supported for app")}
-		return
-	}
 	e <- &Event{Msg: "provisioning infrastructure for public application"}
 
 	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
@@ -197,17 +187,6 @@ func (s *server) provisionInfra(
 func (s *server) deployApp(ctx context.Context, spec *deployment.Spec, e chan<- *Event) {
 	defer close(e)
 
-	// DEPLOY
-	// create task def
-	//  update artifact
-	// update ecs service with new taskdef
-
-	// ensure public visibility
-	if spec.App.Visibility != application.VisibilityPublic {
-		e <- &Event{Err: errors.New("only public visibility is supported for app")}
-		return
-	}
-
 	i, err := s.state.AppInfra(ctx, spec.App.Name)
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to fetch app state: %v", err)}
@@ -224,7 +203,7 @@ func (s *server) deployApp(ctx context.Context, spec *deployment.Spec, e chan<- 
 	e <- &Event{Msg: "created new ECS task definition"}
 
 	// update ecs service
-	if err := s.infra.UpdateECSService(ctx, td); err != nil {
+	if err := s.infra.UpdateECSService(ctx, i.EcsTaskDefinition); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to update ECS service: %v", err)}
 		return
 	}
