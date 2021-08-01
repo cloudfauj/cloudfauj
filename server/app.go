@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
 	infra "github.com/cloudfauj/cloudfauj/infrastructure"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -122,6 +123,63 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 	s.state.UpdateDeploymentStatus(r.Context(), d.Id, deployment.StatusSucceeded)
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+}
+
+func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
+	app := mux.Vars(r)["name"]
+	env := r.URL.Query().Get("env")
+
+	s.log.WithFields(
+		logrus.Fields{"app": app, "env": env},
+	).Info("App deletion request received")
+
+	y, err := s.state.CheckEnvExists(r.Context(), env)
+	if err != nil {
+		s.log.Errorf("Failed to check if env exists: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !y {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	appState, err := s.state.App(r.Context(), app)
+	if err != nil {
+		s.log.Errorf("Failed to get app from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if appState == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	appInfra, err := s.state.AppInfra(r.Context(), app)
+	if err != nil {
+		s.log.Errorf("Failed to get app infra from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.destroyInfra(r.Context(), appInfra); err != nil {
+		s.log.Errorf("Failed to destroy app infra: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := s.state.DeleteAppInfra(r.Context(), app); err != nil {
+		s.log.Errorf("Failed to delete app infra from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := s.state.DeleteApp(r.Context(), app); err != nil {
+		s.log.Errorf("Failed to delete app from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	s.log.Info("Application deleted successfully")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *server) provisionInfra(
