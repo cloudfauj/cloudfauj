@@ -10,23 +10,25 @@ const TypeServer = "server"
 const VisibilityPublic = "public"
 
 type Application struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name        string       `json:"name"`
+	Type        string       `json:"type"`
+	Visibility  string       `json:"visibility"`
+	HealthCheck *HealthCheck `json:"healthcheck"`
+	Resources   *Resources   `json:"resources"`
+}
 
-	HealthCheck struct {
-		Path string `json:"path"`
-	} `json:"healthcheck"`
+type HealthCheck struct {
+	Path string `json:"path"`
+}
 
-	Resources struct {
-		Cpu    int `json:"cpu"`
-		Memory int `json:"memory"`
+type Resources struct {
+	Cpu     int      `json:"cpu"`
+	Memory  int      `json:"memory"`
+	Network *Network `json:"network"`
+}
 
-		Network struct {
-			BindPort int32 `json:"bind_port" mapstructure:"bind_port"`
-		} `json:"network"`
-	} `json:"resources"`
-
-	Visibility string `json:"visibility"`
+type Network struct {
+	BindPort int32 `json:"bind_port" mapstructure:"bind_port"`
 }
 
 func (a *Application) CheckIsValid() error {
