@@ -24,8 +24,8 @@ type State interface {
 
 	Deployment(context.Context, string) (*deployment.Deployment, error)
 	ListDeployments(context.Context, ...string) ([]*deployment.Deployment, error)
-	CreateDeployment(context.Context, *deployment.Deployment) (string, error)
-	UpdateDeploymentStatus(context.Context, string) error
+	CreateDeployment(context.Context, *deployment.Deployment) (int64, error)
+	UpdateDeploymentStatus(context.Context, string, string) error
 
 	CheckAppExists(context.Context, string) (bool, error)
 	CreateApp(context.Context, *application.Application) error

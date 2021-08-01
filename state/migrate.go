@@ -15,5 +15,8 @@ func (s *state) Migrate(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, sqlCreateAppInfraTable); err != nil {
 		return fmt.Errorf("failed to create applications infra table: %v", err)
 	}
+	if _, err := s.db.ExecContext(ctx, sqlCreateDeploymentTable); err != nil {
+		return fmt.Errorf("failed to create deployments table: %v", err)
+	}
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strconv"
 )
 
 func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
@@ -88,9 +89,9 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
-	d.Id = id
-	// todo: log ID in dep log & send to websocket
+	d.Id = strconv.FormatInt(id, 10)
 
+	// todo: log ID in dep log & send to websocket
 	s.log.
 		WithFields(logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id}).
 		Info("Deploying application")
