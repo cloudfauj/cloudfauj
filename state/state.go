@@ -23,7 +23,7 @@ type State interface {
 	DeleteEnvironment(context.Context, string) error
 
 	Deployment(context.Context, string) (*deployment.Deployment, error)
-	ListDeployments(context.Context, ...string) ([]*deployment.Deployment, error)
+	ListDeployments(context.Context, string) ([]*deployment.Deployment, error)
 	CreateDeployment(context.Context, *deployment.Deployment) (int64, error)
 	UpdateDeploymentStatus(context.Context, string, string) error
 

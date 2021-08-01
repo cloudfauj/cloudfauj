@@ -109,7 +109,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	for e := range eventsCh {
 		if e.Err != nil {
 			d.Fail(e.Err)
-			s.state.UpdateDeploymentStatus(r.Context(), d.Status)
+			s.state.UpdateDeploymentStatus(r.Context(), d.Id, d.Status)
 
 			m := []byte(fmt.Sprintf("Deployment failed: %v", e.Err))
 			conn.WriteMessage(websocket.TextMessage, m)
@@ -120,7 +120,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
-	s.state.UpdateDeploymentStatus(r.Context(), deployment.StatusSucceeded)
+	s.state.UpdateDeploymentStatus(r.Context(), d.Id, deployment.StatusSucceeded)
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 
