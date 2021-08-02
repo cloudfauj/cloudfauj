@@ -175,34 +175,25 @@ func (i *Infrastructure) CreateECSService(ctx context.Context, p *ECSServicePara
 	return aws.ToString(s.Service.ServiceArn), nil
 }
 
-// DrainECSService sets the desired task count of an ECS service to 0
-func (i *Infrastructure) DrainECSService(ctx context.Context, service, cluster string) error {
-	_, err := i.ecs.UpdateService(ctx, &ecs.UpdateServiceInput{
-		Service:      aws.String(service),
-		Cluster:      aws.String(cluster),
-		DesiredCount: aws.Int32(0),
-	})
-	return err
-}
-
-// ECSServiceTaskCount returns the number of tasks running in a service
-func (i *Infrastructure) ECSServiceTaskCount(ctx context.Context, service, cluster string) (int32, error) {
+//
+func (i *Infrastructure) ECSServiceStatus(ctx context.Context, service, cluster string) (string, error) {
 	s, err := i.ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
 		Services: []string{service},
 		Cluster:  aws.String(cluster),
 	})
 	if err != nil {
-		return -1, err
+		return "", err
 	}
-	return s.Services[0].RunningCount, nil
+	return aws.ToString(s.Services[0].Status), nil
 }
 
 // DestroyECSService destroys an ECS service.
-// It assumes that the service has already been drained and its desired & running count are 0.
+// It drains the service out if any tasks are still running as part of it.
 func (i *Infrastructure) DestroyECSService(ctx context.Context, service, cluster string) error {
 	_, err := i.ecs.DeleteService(ctx, &ecs.DeleteServiceInput{
 		Service: aws.String(service),
 		Cluster: aws.String(cluster),
+		Force:   aws.Bool(true),
 	})
 	return err
 }
