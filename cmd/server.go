@@ -16,6 +16,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"net/http"
+	"os"
+	"path"
 )
 
 var serverCmd = &cobra.Command{
@@ -43,10 +45,12 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse server configuration: %v", err)
 	}
 
-	// todo: setup local data storage directory if not exists
-
 	log := logrus.New()
 	// todo: further configuration of logger
+
+	if err := setupDataDir(log, srvCfg.DataDir); err != nil {
+		return fmt.Errorf("failed to setup server data directory: %v", err)
+	}
 
 	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
 	if err != nil {
@@ -79,6 +83,30 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 
 	if err := http.ListenAndServe(bindAddr, apiServer); err != nil {
 		return fmt.Errorf("failed to start the server: %v", err)
+	}
+	return nil
+}
+
+func setupDataDir(log *logrus.Logger, dir string) error {
+	// return if the data dir already exists
+	_, err := os.Stat(dir)
+	if err == nil {
+		log.WithField("dir", dir).Debug("Data directory already exists")
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		// unless the error is "dir not found", propagate the unexpected err
+		return fmt.Errorf("failed to check if data directory already exists: %v", err)
+	}
+
+	log.WithField("dir", dir).Info("Setting up server data directory")
+
+	var subDirs = []string{server.DBDir, server.DeploymentsDir}
+	for _, sd := range subDirs {
+		d := path.Join(dir, sd)
+		if err := os.MkdirAll(d, 0755); err != nil {
+			return fmt.Errorf("failed to create %s: %v", d, err)
+		}
 	}
 	return nil
 }
