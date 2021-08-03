@@ -20,11 +20,11 @@ var deployCmd = &cobra.Command{
     directory as the app configuration.
 
     As of today, the only type of application supported is a Docker
-    container running a TCP server.
+    container running a HTTP/TCP server in AWS ECS-Fargate.
     The value of ARTIFACT must be the URI of a docker image residing
     in AWS ECR.`,
 	RunE:    runDeployCmd,
-	Example: "cloudfauj deploy --env staging 123456789012.dkr.ecr.us-east-1.amazonaws.com/demo-server:v1.0.0",
+	Example: "cloudfauj deploy --env staging 123456789012.dkr.ecr.us-east-1.amazonaws.com/demo-server:latest",
 }
 
 func init() {

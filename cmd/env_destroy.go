@@ -12,9 +12,8 @@ var envDestroyCmd = &cobra.Command{
 	Long: `
     This command lets you destroy an environment managed by Cloudfauj.
 
-    It kills all running applications, cancels deployments and destroys all infrastructure
-    of the environment. The command returns immediately with an acknowledgement.
-    The process of destruction takes place in the background.
+    Before destroying an environment, you must ensure that no applications
+    are deployed to it. This will be automated in future.
 
     This command is idempotent and does nothing if the specified environment doesn't exist.`,
 	Args:    cobra.ExactArgs(1),

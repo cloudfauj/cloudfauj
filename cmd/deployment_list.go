@@ -7,7 +7,7 @@ import (
 )
 
 var deploymentListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "ls",
 	Short: "List all Deployments",
 	Long: `
     This command displays a list of all Deployments active in Cloudfauj`,

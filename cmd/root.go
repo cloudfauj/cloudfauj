@@ -13,13 +13,13 @@ var rootCmd = &cobra.Command{
 	Use:   "cloudfauj",
 	Short: "Deploy Apps to your cloud without managing infrastructure",
 	Long: `
-    CloudFauj enables developers to deploy applications in their own Cloud
+    CloudFauj empowers developers to deploy applications in their own Cloud
     without having to manually provision or manage the infrastructure for them.
 
     If you've just installed cloudfauj, you can start by launching the server.
 
-    If your cloudfauj server is already up & running, you can get started with
-    deploying your applications.`,
+    If your cloudfauj server is already up & running, you can get started by
+    creating an environment and deploying an application to it.`,
 }
 
 func Execute() {
@@ -29,7 +29,7 @@ func Execute() {
 func init() {
 	appCmd.AddCommand(appDestroyCmd)
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
-	deploymentCmd.AddCommand(deploymentStatusCmd, deploymentLogsCmd, deploymentListCmd)
+	deploymentCmd.AddCommand(deploymentInfoCmd, deploymentLogsCmd, deploymentListCmd)
 
 	rootCmd.PersistentFlags().StringVar(
 		&serverAddr,

@@ -14,9 +14,9 @@ var envCreateCmd = &cobra.Command{
 	Long: `
     This command lets you create a new environment.
 
-    You must provide a configuration to create the env from.
-    The config defines the underlying infrastructure to provision to manage resources
-    such as DNS, applications, etc.
+    You must provide a configuration to create the environment from.
+    The config defines the underlying infrastructure to provision to manage different
+    types of resources such as container orchestrator.
 
     At least 1 env must exist for an application to be deployed.`,
 	RunE:    runEnvCreateCmd,

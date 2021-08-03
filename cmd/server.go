@@ -24,10 +24,13 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Launch a Cloudfauj Server",
 	Long: `
-    This command starts a Cloudfauj Server that carries out tasks such
-    as Deployments when requested.
-    The server takes care of provisioning and managing all infrastructure required
-    by applications.`,
+    This command starts a Cloudfauj Server that provisions infrastructure and
+    manages environments & applications.
+
+    The server sets up a local data directory if it doesn't already exist to manage
+    all state.
+    It is extremely important that you keep this dir continuously backed up to avoid
+    losing track of all infrastructure.`,
 	RunE: runServerCmd,
 }
 
