@@ -1,5 +1,9 @@
 package deployment
 
+import (
+	"github.com/sirupsen/logrus"
+)
+
 const (
 	StatusRunning   = "running"
 	StatusSucceeded = "succeeded"
@@ -11,23 +15,28 @@ type Deployment struct {
 	App         string `json:"app"`
 	Environment string `json:"environment"`
 	Status      string `json:"status"`
+	log         *logrus.Logger
 }
 
-func New(s *Spec) *Deployment {
+func New(s *Spec, l *logrus.Logger) *Deployment {
 	return &Deployment{
 		App:         s.App.Name,
 		Environment: s.TargetEnv,
 		Status:      StatusRunning,
+		log:         l,
 	}
 }
 
-func (d *Deployment) AppendLog(m string) error {
-	// add log to logfile
-	return nil
+func (d *Deployment) Log(msg string) {
+	d.log.Info(msg)
 }
 
-func (d *Deployment) Fail(e error) error {
+func (d *Deployment) Fail(err error) {
 	d.Status = StatusFailed
-	// write failure log to logfile
-	return nil
+	d.log.Errorf("Deployment Failed: %v", err)
+}
+
+func (d *Deployment) Succeed() {
+	d.Status = StatusSucceeded
+	d.log.Info("Deployment successful")
 }

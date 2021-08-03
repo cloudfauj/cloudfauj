@@ -32,11 +32,9 @@ func (s *server) handlerGetDeployment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handlerGetDeploymentLogs(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-	f := path.Join(s.config.DataDir, DeploymentsDir, id, LogFileBasename)
+	f := s.deploymentLogFile(mux.Vars(r)["id"])
 
-	s.log.WithField("path", f).Info("Fetching deployment logs")
-
+	s.log.WithField("path", f).Debug("Fetching deployment logs")
 	content, err := ioutil.ReadFile(f)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -64,4 +62,12 @@ func (s *server) handlerListDeployments(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	jsonRes, _ := json.Marshal(res)
 	_, _ = w.Write(jsonRes)
+}
+
+func (s *server) deploymentDir(id string) string {
+	return path.Join(s.config.DataDir, DeploymentsDir, id)
+}
+
+func (s *server) deploymentLogFile(id string) string {
+	return path.Join(s.deploymentDir(id), LogFileBasename)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -83,8 +84,11 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// create new deployment in state
-	d := deployment.New(&spec)
+	// app already exists, run new deployment
+
+	depLogger := logrus.New()
+	d := deployment.New(&spec, depLogger)
+
 	id, err := s.state.CreateDeployment(r.Context(), d)
 	if err != nil {
 		s.log.WithField("app", spec.App.Name).Errorf("Failed to create deployment: %v", err)
@@ -93,13 +97,26 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	}
 	d.Id = strconv.FormatInt(id, 10)
 
-	// todo: log ID in dep log & send to websocket
+	// open deployment log file
+	os.Mkdir(s.deploymentDir(d.Id), 0755)
+	dlf, err := os.OpenFile(s.deploymentLogFile(d.Id), os.O_CREATE|os.O_RDWR, 0666)
+	if err != nil {
+		s.log.Errorf("Failed to open deployment log file: %v", err)
+	} else {
+		defer dlf.Close()
+		depLogger.SetOutput(dlf)
+	}
+
+	msg := "Deployment ID: " + d.Id
+	conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	d.Log(msg)
 	s.log.
 		WithFields(logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id}).
 		Info("Deploying application")
 
 	if err := s.state.UpdateApp(r.Context(), spec.App); err != nil {
 		s.log.Errorf("Failed to update app in state: %v", err)
+		d.Fail(errors.New("a server error occurred"))
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
@@ -118,11 +135,12 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 			return
 		}
-		d.AppendLog(e.Msg)
+		d.Log(e.Msg)
 		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
-	s.state.UpdateDeploymentStatus(r.Context(), d.Id, deployment.StatusSucceeded)
+	d.Succeed()
+	s.state.UpdateDeploymentStatus(r.Context(), d.Id, d.Status)
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 
@@ -296,7 +314,7 @@ func (s *server) deployApp(
 
 	// todo: tail deployment logs
 
-	e <- &Event{Msg: "deployment succeeded"}
+	e <- &Event{Msg: "ECS deployment has finished"}
 }
 
 func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *environment.Environment) error {
