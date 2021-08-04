@@ -48,19 +48,16 @@ func runDeployCmd(cmd *cobra.Command, args []string) error {
 	env, _ := cmd.Flags().GetString("env")
 	spec := &deployment.Spec{App: &app, TargetEnv: env, Artifact: args[0]}
 
-	fmt.Printf("Deploying %s (%s) to %s\n", app.Name, spec.Artifact, spec.TargetEnv)
+	fmt.Printf("Deploying %s artifact to %s\n\n", app.Name, spec.TargetEnv)
 	eventsCh, err := apiClient.Deploy(spec)
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Streaming deployment logs from server...")
 	for e := range eventsCh {
 		if e.Err != nil {
 			return e.Err
 		}
 		fmt.Println(e.Message)
 	}
-
 	return nil
 }

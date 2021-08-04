@@ -49,9 +49,7 @@ func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *ServerEven
 				// unless an error has occurred due to normal connection closure
 				// from server, it needs to propagate.
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					respCh <- &ServerEvent{
-						Err: fmt.Errorf("server error: %v", err),
-					}
+					respCh <- &ServerEvent{Err: err}
 				}
 				break
 			}

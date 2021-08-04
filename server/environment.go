@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -33,7 +34,10 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := env.CheckIsValid(); err != nil {
-		s.log.Infof("Invalid env config: %v", err)
+		conn.WriteMessage(
+			websocket.TextMessage,
+			[]byte(fmt.Sprintf("Invalid environment config: %v", err)),
+		)
 		_ = sendWSClosureMsg(conn, websocket.CloseInvalidFramePayloadData)
 		return
 	}
@@ -45,7 +49,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if ok {
-		s.log.WithField("name", env.Name).Debug("Environment already exists")
+		conn.WriteMessage(websocket.TextMessage, []byte("Environment already exists"))
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
@@ -61,7 +65,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
-	_ = conn.WriteMessage(websocket.TextMessage, []byte("New environment registered in state"))
+	conn.WriteMessage(websocket.TextMessage, []byte("Registered in state"))
 
 	eventsCh := make(chan environment.Event)
 	go env.Provision(r.Context(), eventsCh)
@@ -73,7 +77,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.log.Info(e.Msg)
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
 	env.Status = environment.StatusProvisioned
@@ -83,6 +87,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conn.WriteMessage(websocket.TextMessage, []byte("Successfully created "+env.Name))
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 
@@ -99,12 +104,12 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if env == nil {
-		s.log.WithField("name", envName).Debug("Environment does not exist")
+		conn.WriteMessage(websocket.TextMessage, []byte("Environment does not exist"))
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
 	if env.Status != environment.StatusProvisioned {
-		s.log.WithField("name", envName).Debug("Environment is not in provisioned state")
+		conn.WriteMessage(websocket.TextMessage, []byte("Environment is not in provisioned state"))
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
@@ -128,11 +133,12 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	for e := range eventsCh {
 		if e.Err != nil {
 			s.log.Errorf("Failed to destroy environment: %v", e.Err)
+			conn.WriteMessage(websocket.TextMessage, []byte("Failed to destroy environment"))
 			_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 			return
 		}
 		s.log.Info(e.Msg)
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
 	if err := s.state.DeleteEnvironment(r.Context(), envName); err != nil {
@@ -141,5 +147,6 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conn.WriteMessage(websocket.TextMessage, []byte("Environment destroyed successfully"))
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }

@@ -10,7 +10,7 @@ var deploymentListCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List all Deployments",
 	Long: `
-    This command displays a list of all Deployments active in Cloudfauj`,
+    This command displays a list of all running deployments in Cloudfauj`,
 	RunE: runDeploymentListCmd,
 }
 
@@ -19,10 +19,12 @@ func runDeploymentListCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	res, err := apiClient.ListDeployments()
 	if err != nil {
 		return err
+	}
+	if len(res) == 0 {
+		fmt.Println("No deployments running at this time")
 	}
 	for _, d := range res {
 		desc := `ID: %s

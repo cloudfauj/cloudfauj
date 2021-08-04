@@ -39,19 +39,16 @@ func runEnvCreateCmd(cmd *cobra.Command, args []string) error {
 	var env environment.Environment
 	_ = viper.Unmarshal(&env)
 
-	fmt.Printf("Requesting creation of %s\n", env.Name)
+	fmt.Printf("Requesting creation of %s\n\n", env.Name)
 	eventsCh, err := apiClient.CreateEnvironment(&env)
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Streaming logs from server...")
 	for e := range eventsCh {
 		if e.Err != nil {
 			return e.Err
 		}
 		fmt.Println(e.Message)
 	}
-
 	return nil
 }

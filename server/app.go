@@ -28,8 +28,11 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := spec.CheckIsValid(); err != nil {
-		s.log.Errorf("Invalid specification: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.WriteMessage(
+			websocket.TextMessage,
+			[]byte(fmt.Sprintf("Invalid specification: %v", err)),
+		)
+		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
 
@@ -40,12 +43,12 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if e == nil {
-		s.log.WithField("name", spec.TargetEnv).Debug("Deployment target environment does not exist")
+		conn.WriteMessage(websocket.TextMessage, []byte("Target environment does not exist"))
 		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
 	if e.Status != environment.StatusProvisioned {
-		s.log.WithField("name", spec.TargetEnv).Error("Environment is not ready to be deployed to")
+		conn.WriteMessage(websocket.TextMessage, []byte("Target environment is not ready to be deployed to"))
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
@@ -59,6 +62,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	}
 	if app == nil {
 		s.log.WithField("name", spec.App.Name).Info("Creating new application")
+		conn.WriteMessage(websocket.TextMessage, []byte("Creating application for the first time"))
 
 		// register app in state
 		if err := s.state.CreateApp(r.Context(), spec.App); err != nil {
@@ -80,6 +84,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 			conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 		}
 
+		conn.WriteMessage(websocket.TextMessage, []byte("App created & deployed successfully"))
 		_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 		return
 	}
@@ -116,12 +121,12 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.state.UpdateApp(r.Context(), spec.App); err != nil {
 		s.log.Errorf("Failed to update app in state: %v", err)
-		d.Fail(errors.New("a server error occurred"))
+		d.Fail(errors.New("a server error occurred while updating app state"))
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
 
-	// provision infrastructure for app
+	// deploy app artifact
 	eventsCh := make(chan *Event)
 	go s.deployApp(r.Context(), &spec, app, e, eventsCh)
 
@@ -141,6 +146,8 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 	d.Succeed()
 	s.state.UpdateDeploymentStatus(r.Context(), d.Id, d.Status)
+
+	conn.WriteMessage(websocket.TextMessage, []byte("Deployed successfully"))
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 

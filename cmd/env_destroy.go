@@ -26,20 +26,16 @@ func runEnvDestroyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Requesting destruction of %s\n", args[0])
+	fmt.Printf("Destroying %s\n\n", args[0])
 	eventsCh, err := apiClient.DestroyEnvironment(args[0])
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Streaming logs from server...")
 	for e := range eventsCh {
 		if e.Err != nil {
 			return e.Err
 		}
 		fmt.Println(e.Message)
 	}
-
 	return nil
 }
