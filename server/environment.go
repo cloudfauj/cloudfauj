@@ -114,8 +114,21 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// todo: if even a single app is running in this env, reject
-	//  destroy request.
+	// don't destroy the environment if even a single app exists in it
+	hasApps, err := s.state.CheckEnvContainsApps(r.Context(), env.Name)
+	if err != nil {
+		s.log.Errorf("Failed to check if env contains apps: %v", err)
+		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		return
+	}
+	if hasApps {
+		conn.WriteMessage(
+			websocket.TextMessage,
+			[]byte("Environment cannot be destroyed because it contains applications"),
+		)
+		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		return
+	}
 
 	s.log.WithField("name", envName).Info("Destroying environment")
 

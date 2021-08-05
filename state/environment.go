@@ -141,3 +141,16 @@ func (s *state) DeleteEnvironment(ctx context.Context, name string) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM environments WHERE name = ?", name)
 	return err
 }
+
+func (s *state) CheckEnvContainsApps(ctx context.Context, name string) (bool, error) {
+	var app string
+	err := s.db.QueryRowContext(
+		ctx, "SELECT name FROM applications WHERE env = ? LIMIT 1", name,
+	).Scan(&app)
+	// no rows means the environment has no apps
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	// any error other than "no rows" must simply be propagated
+	return true, err
+}

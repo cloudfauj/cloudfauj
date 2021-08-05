@@ -21,6 +21,8 @@ type State interface {
 	ListEnvironments(context.Context) ([]string, error)
 	Environment(context.Context, string) (*environment.Environment, error)
 	DeleteEnvironment(context.Context, string) error
+	// CheckEnvContainsApps returns true if the given environment contains even a single application
+	CheckEnvContainsApps(context.Context, string) (bool, error)
 
 	Deployment(context.Context, string) (*deployment.Deployment, error)
 	ListDeployments(context.Context, string) ([]*deployment.Deployment, error)
