@@ -29,16 +29,16 @@ type State interface {
 	CreateDeployment(context.Context, *deployment.Deployment) (int64, error)
 	UpdateDeploymentStatus(context.Context, string, string) error
 
-	CheckAppExists(context.Context, string) (bool, error)
-	CreateApp(context.Context, *application.Application) error
-	UpdateApp(context.Context, *application.Application) error
-	App(context.Context, string) (*application.Application, error)
-	DeleteApp(context.Context, string) error
+	//CheckAppExists(context.Context, string, string) (bool, error)
+	CreateApp(context.Context, *application.Application, string) error
+	UpdateApp(context.Context, *application.Application, string) error
+	App(context.Context, string, string) (*application.Application, error)
+	DeleteApp(context.Context, string, string) error
 
 	CreateAppInfra(context.Context, *infrastructure.AppInfra) error
 	UpdateAppInfra(context.Context, *infrastructure.AppInfra) error
-	AppInfra(context.Context, string) (*infrastructure.AppInfra, error)
-	DeleteAppInfra(context.Context, string) error
+	AppInfra(context.Context, string, string) (*infrastructure.AppInfra, error)
+	DeleteAppInfra(context.Context, string, string) error
 }
 
 type state struct {

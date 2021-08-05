@@ -13,6 +13,7 @@ import (
 
 type AppInfra struct {
 	App               string `json:"app"`
+	Env               string `json:"env"`
 	EcsTaskDefinition string `json:"ecs_task_definition"`
 	ECSService        string `json:"ecs_service"`
 	SecurityGroup     string `json:"security_group"`

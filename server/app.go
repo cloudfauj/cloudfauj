@@ -53,19 +53,24 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get app from state if it already exists
-	app, err := s.state.App(r.Context(), spec.App.Name)
+	// get app from state if it already exists in the target environment
+	app, err := s.state.App(r.Context(), spec.App.Name, spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.App.Name).Errorf("Failed to get app from state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
 	}
 	if app == nil {
-		s.log.WithField("name", spec.App.Name).Info("Creating new application")
-		conn.WriteMessage(websocket.TextMessage, []byte("Creating application for the first time"))
+		s.log.WithFields(
+			logrus.Fields{"name": spec.App.Name, "env": spec.TargetEnv},
+		).Info("Creating new application")
+		conn.WriteMessage(
+			websocket.TextMessage,
+			[]byte("Creating application in this environment for the first time"),
+		)
 
 		// register app in state
-		if err := s.state.CreateApp(r.Context(), spec.App); err != nil {
+		if err := s.state.CreateApp(r.Context(), spec.App, spec.TargetEnv); err != nil {
 			s.log.Errorf("Failed to create app in state: %v", err)
 			_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 			return
@@ -119,7 +124,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		WithFields(logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id}).
 		Info("Deploying application")
 
-	if err := s.state.UpdateApp(r.Context(), spec.App); err != nil {
+	if err := s.state.UpdateApp(r.Context(), spec.App, spec.TargetEnv); err != nil {
 		s.log.Errorf("Failed to update app in state: %v", err)
 		d.Fail(errors.New("a server error occurred while updating app state"))
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
@@ -170,7 +175,7 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appState, err := s.state.App(r.Context(), app)
+	appState, err := s.state.App(r.Context(), app, env)
 	if err != nil {
 		s.log.Errorf("Failed to get app from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -181,7 +186,7 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appInfra, err := s.state.AppInfra(r.Context(), app)
+	appInfra, err := s.state.AppInfra(r.Context(), app, env)
 	if err != nil {
 		s.log.Errorf("Failed to get app infra from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -193,12 +198,12 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := s.state.DeleteAppInfra(r.Context(), app); err != nil {
+	if err := s.state.DeleteAppInfra(r.Context(), app, env); err != nil {
 		s.log.Errorf("Failed to delete app infra from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := s.state.DeleteApp(r.Context(), app); err != nil {
+	if err := s.state.DeleteApp(r.Context(), app, env); err != nil {
 		s.log.Errorf("Failed to delete app from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -216,7 +221,7 @@ func (s *server) provisionInfra(
 ) {
 	defer close(e)
 
-	i := &infra.AppInfra{App: d.App.Name}
+	i := &infra.AppInfra{App: d.App.Name, Env: env.Name}
 	e <- &Event{Msg: "provisioning infrastructure for public application"}
 
 	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
@@ -285,7 +290,7 @@ func (s *server) deployApp(
 		return
 	}
 
-	i, err := s.state.AppInfra(ctx, d.App.Name)
+	i, err := s.state.AppInfra(ctx, d.App.Name, env.Name)
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to fetch app state: %v", err)}
 		return

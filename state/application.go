@@ -7,19 +7,22 @@ import (
 )
 
 const sqlCreateAppTable = `CREATE TABLE IF NOT EXISTS applications (
-	name VARCHAR(100) NOT NULL PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name VARCHAR(100) NOT NULL,
+	env VARCHAR(100) NOT NULL,
 	type VARCHAR(40) NOT NULL,
 	visibility VARCHAR(40) NOT NULL,
 	health_path VARCHAR(70) NOT NULL,
 	cpu INT NOT NULL,
 	memory INT NOT NULL,
-	bind_port INT NOT NULL
+	bind_port INT NOT NULL,
+	UNIQUE(name, env)
 )`
 
-func (s *state) CreateApp(ctx context.Context, app *application.Application) error {
+func (s *state) CreateApp(ctx context.Context, app *application.Application, env string) error {
 	q := `INSERT INTO applications(
-	name, type, visibility, health_path, cpu, memory, bind_port
-) VALUES(?, ?, ?, ?, ?, ?, ?)`
+	name, env, type, visibility, health_path, cpu, memory, bind_port
+) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -28,6 +31,7 @@ func (s *state) CreateApp(ctx context.Context, app *application.Application) err
 	_, err = stmt.ExecContext(
 		ctx,
 		app.Name,
+		env,
 		app.Type,
 		app.Visibility,
 		app.HealthCheck.Path,
@@ -41,19 +45,7 @@ func (s *state) CreateApp(ctx context.Context, app *application.Application) err
 	return nil
 }
 
-func (s *state) CheckAppExists(ctx context.Context, name string) (bool, error) {
-	var res string
-	err := s.db.QueryRowContext(ctx, "SELECT name FROM applications WHERE name = ?", name).Scan(&res)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-func (s *state) UpdateApp(ctx context.Context, app *application.Application) error {
+func (s *state) UpdateApp(ctx context.Context, app *application.Application, env string) error {
 	q := `UPDATE applications
 SET
 	type = ?,
@@ -62,7 +54,7 @@ SET
 	cpu = ?,
 	memory = ?,
 	bind_port = ?
-WHERE name = ?`
+WHERE name = ? AND env = ?`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -77,6 +69,7 @@ WHERE name = ?`
 		app.Resources.Memory,
 		app.Resources.Network.BindPort,
 		app.Name,
+		env,
 	)
 	if err != nil {
 		return err
@@ -84,15 +77,21 @@ WHERE name = ?`
 	return nil
 }
 
-func (s *state) App(ctx context.Context, name string) (*application.Application, error) {
+func (s *state) App(ctx context.Context, name, env string) (*application.Application, error) {
+	var (
+		id int
+		e  string
+	)
 	a := &application.Application{
 		HealthCheck: &application.HealthCheck{},
 		Resources:   &application.Resources{Network: &application.Network{}},
 	}
 	err := s.db.QueryRowContext(
-		ctx, "SELECT * FROM applications WHERE name = ?", name,
+		ctx, "SELECT * FROM applications WHERE name = ? AND env = ?", name, env,
 	).Scan(
+		&id,
 		&a.Name,
+		&e,
 		&a.Type,
 		&a.Visibility,
 		&a.HealthCheck.Path,
@@ -110,7 +109,21 @@ func (s *state) App(ctx context.Context, name string) (*application.Application,
 	return a, nil
 }
 
-func (s *state) DeleteApp(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM applications WHERE name = ?", name)
+func (s *state) DeleteApp(ctx context.Context, name, env string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM applications WHERE name = ? AND env = ?", name, env)
 	return err
 }
+
+//func (s *state) CheckAppExists(ctx context.Context, name, env string) (bool, error) {
+//	var res string
+//	err := s.db.QueryRowContext(
+//		ctx, "SELECT name FROM applications WHERE name = ? AND env = ?", name, env,
+//	).Scan(&res)
+//	if err != nil {
+//		if err == sql.ErrNoRows {
+//			return false, nil
+//		}
+//		return false, err
+//	}
+//	return true, nil
+//}

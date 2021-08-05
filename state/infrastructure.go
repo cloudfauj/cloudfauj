@@ -6,16 +6,19 @@ import (
 )
 
 const sqlCreateAppInfraTable = `CREATE TABLE IF NOT EXISTS app_infra (
-	app VARCHAR(100) NOT NULL PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	app VARCHAR(100) NOT NULL,
+	env VARCHAR(100) NOT NULL,
 	ecs_task_definition VARCHAR(300) NOT NULL,
 	ecs_service VARCHAR(300) NOT NULL,
-	security_group VARCHAR(300) NOT NULL
+	security_group VARCHAR(300) NOT NULL,
+	UNIQUE(app, env)
 )`
 
 func (s *state) CreateAppInfra(ctx context.Context, infra *infrastructure.AppInfra) error {
 	q := `INSERT INTO app_infra(
-	app, ecs_task_definition, ecs_service, security_group
-) VALUES(?, ?, ?, ?)`
+	app, env, ecs_task_definition, ecs_service, security_group
+) VALUES(?, ?, ?, ?, ?)`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -24,6 +27,7 @@ func (s *state) CreateAppInfra(ctx context.Context, infra *infrastructure.AppInf
 	_, err = stmt.ExecContext(
 		ctx,
 		infra.App,
+		infra.Env,
 		infra.EcsTaskDefinition,
 		infra.ECSService,
 		infra.SecurityGroup,
@@ -40,7 +44,7 @@ SET
 	ecs_task_definition = ?,
 	ecs_service = ?,
 	security_group = ?
-WHERE app = ?`
+WHERE app = ? AND env = ?`
 
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
@@ -52,6 +56,7 @@ WHERE app = ?`
 		infra.ECSService,
 		infra.SecurityGroup,
 		infra.App,
+		infra.Env,
 	)
 	if err != nil {
 		return err
@@ -59,12 +64,17 @@ WHERE app = ?`
 	return nil
 }
 
-func (s *state) AppInfra(ctx context.Context, name string) (*infrastructure.AppInfra, error) {
-	var i infrastructure.AppInfra
+func (s *state) AppInfra(ctx context.Context, name, env string) (*infrastructure.AppInfra, error) {
+	var (
+		id int
+		i  infrastructure.AppInfra
+	)
 	err := s.db.QueryRowContext(
-		ctx, "SELECT * FROM app_infra WHERE app = ?", name,
+		ctx, "SELECT * FROM app_infra WHERE app = ? AND env = ?", name, env,
 	).Scan(
+		&id,
 		&i.App,
+		&i.Env,
 		&i.EcsTaskDefinition,
 		&i.ECSService,
 		&i.SecurityGroup,
@@ -75,7 +85,7 @@ func (s *state) AppInfra(ctx context.Context, name string) (*infrastructure.AppI
 	return &i, nil
 }
 
-func (s *state) DeleteAppInfra(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM app_infra WHERE app = ?", name)
+func (s *state) DeleteAppInfra(ctx context.Context, name, env string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM app_infra WHERE app = ? AND env = ?", name, env)
 	return err
 }

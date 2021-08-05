@@ -28,7 +28,7 @@ func runAppDestroyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Destroying %s from %s", args[0], env)
+	fmt.Printf("Destroying %s from %s\n", args[0], env)
 	if err := apiClient.DestroyApp(args[0], env); err != nil {
 		return err
 	}
