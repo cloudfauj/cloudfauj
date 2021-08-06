@@ -66,10 +66,18 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run DB migrations: %v", err)
 	}
 
+	log.Info("Checking AWS credentials")
 	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("failed to setup AWS configuration: %v", err)
 	}
+	if awsCfg.Region == "" {
+		return fmt.Errorf("no AWS region specified")
+	}
+	if _, err := awsCfg.Credentials.Retrieve(cmd.Context()); err != nil {
+		return fmt.Errorf("no AWS credentials supplied, cannot proceed")
+	}
+
 	infra := infrastructure.New(
 		log,
 		ec2.NewFromConfig(awsCfg),
@@ -78,12 +86,10 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		elasticloadbalancingv2.NewFromConfig(awsCfg),
 		awsCfg.Region,
 	)
-
 	apiServer := server.New(&srvCfg, log, storage, infra)
-
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
-	log.WithFields(logrus.Fields{"bind_addr": bindAddr}).Info("Starting CloudFauj Server")
 
+	log.WithFields(logrus.Fields{"bind_addr": bindAddr}).Info("Starting CloudFauj Server")
 	if err := http.ListenAndServe(bindAddr, apiServer); err != nil {
 		return fmt.Errorf("failed to start the server: %v", err)
 	}
