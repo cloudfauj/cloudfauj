@@ -118,6 +118,10 @@ func (i *Infrastructure) CreateSecurityGroup(ctx context.Context, env, service, 
 		GroupName:   aws.String(env + "-" + service),
 		VpcId:       aws.String(vpc),
 		Description: aws.String(fmt.Sprintf("Traffic control for %s/%s", env, service)),
+		TagSpecifications: []types2.TagSpecification{{
+			ResourceType: types2.ResourceTypeSecurityGroup,
+			Tags:         []types2.Tag{{Key: aws.String("Name"), Value: aws.String(env + "-" + service)}},
+		}},
 	})
 	if err != nil {
 		return "", err

@@ -45,13 +45,22 @@ func New(
 }
 
 // CreateVPC creates a new VPC in aws with an available CIDR
-func (i *Infrastructure) CreateVPC(ctx context.Context) (string, error) {
+func (i *Infrastructure) CreateVPC(ctx context.Context, name string) (string, error) {
 	c, err := i.nextAvailableCIDR(ctx)
 	i.log.Debugf("Using CIDR %s", c)
 	if err != nil {
 		return "", fmt.Errorf("failed to calculate CIDR: %v", err)
 	}
-	res, err := i.ec2.CreateVpc(ctx, &ec2.CreateVpcInput{CidrBlock: aws.String(c)})
+	res, err := i.ec2.CreateVpc(
+		ctx,
+		&ec2.CreateVpcInput{
+			CidrBlock: aws.String(c),
+			TagSpecifications: []types.TagSpecification{{
+				ResourceType: types.ResourceTypeVpc,
+				Tags:         []types.Tag{{Key: aws.String("Name"), Value: aws.String(name)}},
+			}},
+		},
+	)
 	if err != nil {
 		return "", err
 	}
@@ -66,8 +75,16 @@ func (i *Infrastructure) DestroyVPC(ctx context.Context, id string) error {
 
 // CreateInternetGateway creates a new internet gateway and
 // attaches it to the specified VPC.
-func (i *Infrastructure) CreateInternetGateway(ctx context.Context, vpc string) (string, error) {
-	g, err := i.ec2.CreateInternetGateway(ctx, &ec2.CreateInternetGatewayInput{})
+func (i *Infrastructure) CreateInternetGateway(ctx context.Context, name, vpc string) (string, error) {
+	g, err := i.ec2.CreateInternetGateway(
+		ctx,
+		&ec2.CreateInternetGatewayInput{
+			TagSpecifications: []types.TagSpecification{{
+				ResourceType: types.ResourceTypeInternetGateway,
+				Tags:         []types.Tag{{Key: aws.String("Name"), Value: aws.String(name)}},
+			}},
+		},
+	)
 	if err != nil {
 		return "", err
 	}
@@ -141,6 +158,10 @@ func (i *Infrastructure) CreateSubnet(ctx context.Context, name, vpc string, new
 	s, err := i.ec2.CreateSubnet(ctx, &ec2.CreateSubnetInput{
 		VpcId:     aws.String(vpc),
 		CidrBlock: aws.String(subCidr.String()),
+		TagSpecifications: []types.TagSpecification{{
+			ResourceType: types.ResourceTypeSubnet,
+			Tags:         []types.Tag{{Key: aws.String("Name"), Value: aws.String(name)}},
+		}},
 	})
 	if err != nil {
 		return "", err

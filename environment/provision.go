@@ -8,7 +8,9 @@ import (
 func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	defer close(eventsCh)
 
-	v, err := e.Infra.CreateVPC(ctx)
+	n := e.baseResourceName()
+
+	v, err := e.Infra.CreateVPC(ctx, n)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create VPC: %v", err)}
 		return
@@ -16,7 +18,7 @@ func (e *Environment) Provision(ctx context.Context, eventsCh chan<- Event) {
 	e.Res.VpcId = v
 	eventsCh <- Event{Msg: "Created VPC"}
 
-	g, err := e.Infra.CreateInternetGateway(ctx, e.Res.VpcId)
+	g, err := e.Infra.CreateInternetGateway(ctx, n, e.Res.VpcId)
 	if err != nil {
 		eventsCh <- Event{Err: fmt.Errorf("failed to create internet gateway: %v", err)}
 		return
