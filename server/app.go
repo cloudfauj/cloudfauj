@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
@@ -273,7 +275,7 @@ func (s *server) provisionInfra(
 		return
 	}
 
-	// todo: tail ecs deployment logs
+	s.trackDeployment(ctx, env, i, e)
 }
 
 func (s *server) deployApp(
@@ -324,9 +326,35 @@ func (s *server) deployApp(
 	}
 	e <- &Event{Msg: "updated app infra state"}
 
-	// todo: tail deployment logs
+	s.trackDeployment(ctx, env, i, e)
+}
 
-	e <- &Event{Msg: "ECS deployment has finished"}
+// trackDeployment polls the latest ECS deployment and streams the status until
+// the deployment has completed or failed off.
+func (s *server) trackDeployment(
+	ctx context.Context,
+	env *environment.Environment,
+	i *infra.AppInfra,
+	e chan<- *Event,
+) {
+	// todo: improve timeout logic
+	for j := 0; j < 120; j++ {
+		e <- &Event{Msg: "Deploying application to ECS..."}
+		d, err := s.infra.ECSServicePrimaryDeployment(ctx, i.ECSService, env.Res.ECSCluster)
+		if err != nil {
+			s.log.Errorf("Failed to fetch deployment information from ECS: %v", err)
+		}
+		switch d.RolloutState {
+		case types.DeploymentRolloutStateCompleted:
+			e <- &Event{Msg: "Done"}
+			return
+		case types.DeploymentRolloutStateFailed:
+			e <- &Event{Err: errors.New("ECS Deployment failed: " + aws.ToString(d.RolloutStateReason))}
+			return
+		}
+		time.Sleep(time.Second * 5)
+	}
+	e <- &Event{Err: errors.New("deployment polling timeout reached")}
 }
 
 func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *environment.Environment) error {
@@ -337,7 +365,7 @@ func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *env
 		return fmt.Errorf("failed to delete ECS Service: %v", err)
 	}
 	// todo: improve the timeout logic
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 40; i++ {
 		s.log.Info("Draining ECS service...")
 		time.Sleep(time.Second * 5)
 

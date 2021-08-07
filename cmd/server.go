@@ -66,7 +66,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run DB migrations: %v", err)
 	}
 
-	log.Info("Checking AWS credentials")
+	log.Info("Validating AWS credentials")
 	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("failed to setup AWS configuration: %v", err)

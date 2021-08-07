@@ -180,16 +180,32 @@ func (i *Infrastructure) CreateECSService(ctx context.Context, p *ECSServicePara
 	return aws.ToString(s.Service.ServiceArn), nil
 }
 
-//
-func (i *Infrastructure) ECSServiceStatus(ctx context.Context, service, cluster string) (string, error) {
-	s, err := i.ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
+func (i *Infrastructure) ECSService(ctx context.Context, service, cluster string) (types.Service, error) {
+	res, err := i.ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
 		Services: []string{service},
 		Cluster:  aws.String(cluster),
 	})
 	if err != nil {
+		return types.Service{}, err
+	}
+	return res.Services[0], nil
+}
+
+func (i *Infrastructure) ECSServiceStatus(ctx context.Context, service, cluster string) (string, error) {
+	s, err := i.ECSService(ctx, service, cluster)
+	if err != nil {
 		return "", err
 	}
-	return aws.ToString(s.Services[0].Status), nil
+	return aws.ToString(s.Status), nil
+}
+
+func (i *Infrastructure) ECSServicePrimaryDeployment(ctx context.Context, service, cluster string) (types.Deployment, error) {
+	s, err := i.ECSService(ctx, service, cluster)
+	if err != nil {
+		return types.Deployment{}, err
+	}
+	// todo: ensure that the first item in Deployments list is always the PRIMARY deployment
+	return s.Deployments[0], nil
 }
 
 // DestroyECSService destroys an ECS service.
