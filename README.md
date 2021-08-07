@@ -1,5 +1,7 @@
 # CloudFauj
-Deploy containers to your AWS without managing infrastructure
+**Deploy containers to your AWS without managing infrastructure**
+
+**NOTE**: Cloudfauj is under active development. We do not recommend it for production environments or if you're not comfortable with AWS. There may be breaking changes in future releases.
 
 CloudFauj is a self-serve platform for developers to deploy containers without having to provision and manage the infrastructure for them.
 
@@ -15,38 +17,18 @@ Ops teams use Cloudfauj to create and manage environments in their own AWS accou
 
 Cloudfauj automates creating all resources to run apps in different environments. This removes toil for Ops, while still giving them an extremely high degree of control over the infrastructure & costs.
 
-TODO
+## Documentation
+1. [Getting Started](./docs/getting-started.md)
+2. [Concepts](./docs/concepts.md)
+    1. [Architecture](./docs/concepts.md#architecture)
+    2. [Server](./docs/concepts.md#server)
+    3. [Client](./docs/concepts.md#client)
+    4. [Environment](./docs/concepts.md#environment)
+    5. [Application](./docs/concepts.md#application)
+3. [Creating an Environment](./docs/create-env.md)
+4. [Deploying an Application](./docs/deploy-app.md)
 
-- write documentation - 25 aug
-  - cli help text
-  - GH readme with index
-  - guide: deploy & teardown a node app using cloudfauj
-  - cli: version
-  - GH release binary
-- polish the whole user experience
-  - TEST: before modifying any state or infra, check if aws creds are supplied
-- launch v1 - 25 aug
+## License
+MPL-2.0
 
-Issues:
-1. During app destroy, cli times out before our ecs timeout. Also, ecs drain timeout may not be enough, so I had to re-run app destroy.
-```
-./cloudfauj app destroy nginx-api --env raghavdemo
-   Destroying nginx-api from raghavdemo
-   Error: Delete "http://127.0.0.1:6200/v1/app/nginx-api?env=raghavdemo": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-```
-
-post v1:
-- test whether server can handle multiple requests simultaneously
-- infra management via terraform
-- app destroy: stream destroy logs to client
-- automatic tls + load balancer
-- route53 dns integration so we can provide url for app
-- destroy all apps as prerequisite when destroying an env
-- add `--dry` to server, which doesn't check for aws creds, doesn't provision any real infra and manages state in-mem
-
-
-
-- read up on websocket & gorilla lib
-- do we want to rename deployment status to deployment info (or just deployment)
-- replace all print statements & linebreaks with proper logging (stdout/err)
-- Handle when required config files are not supplied/present (or required fields in them not present)
+Please see the [License](./LICENSE) for details.
