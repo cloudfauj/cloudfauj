@@ -95,6 +95,6 @@ Destroying nginx-api from staging
 Done
 ```
 
-Previous: [Creating an environment](./create-env.md)
+**Previous**: [Creating an environment](./create-env.md)
 
-Top: [Table of Contents](../README.md#documentation)
+**Top**: [Table of Contents](../README.md#documentation)

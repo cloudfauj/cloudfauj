@@ -9,7 +9,12 @@ No environments created yet
 
 This means our server is responding to our requests and we currently don't have any environments to deploy apps to. Let's create one!
 
-**NOTE**: Cloudfauj is not responsible for any costs you incur while following this guide.
+---
+**NOTE**
+
+Cloudfauj is not responsible for any costs you incur while following this guide.
+
+---
 
 ## Prerequisites
 To be able to create infrastructure, you need an **AWS Account**. Cloudfauj server should already be able to make requests to this account (see [permissions required](./getting-started.md#iam-permissions)).
@@ -25,6 +30,8 @@ name: staging
 ```
 
 Running the command creates several resources for the `staging` environment in your AWS account. Cloudfauj also starts tracking all these resources in its own [internal state](./getting-started.md#configuration).
+
+In the below example, you see the server on the left and client on the right.
 
 ![Create environment](./assets/create-env.gif)
 
@@ -43,6 +50,6 @@ Use `env destroy` to destroy an environment. This deletes all AWS resources crea
 
 ![Destroy environment](./assets/destroy-env.gif)
 
-Previous: [Concepts](./concepts.md)
+**Previous**: [Concepts](./concepts.md)
 
-Next: [Deploying an Application](./deploy-app.md)
+**Next**: [Deploying an Application](./deploy-app.md)

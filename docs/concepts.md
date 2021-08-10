@@ -1,15 +1,17 @@
 ## Architecture
 Cloudfauj follows a client-server architecture.
 
+The client is used by humans or deployment systems like Jenkins to make requests to the server. The Server does all the heavy-lifting to manage infrastructure.
+
 ### Server
 Server is the first thing you launch after downloading Cloudfauj.
 
-It is responsible for creating, managing and tracking resources in the cloud. It contains data & logs of all past and ongoing deployments.
+It is responsible for creating, managing and tracking resources in the cloud. It contains data & logs of all past and ongoing deployments. The server maintains all its data inside a single [data directory](./getting-started.md#configuration).
 
 See [Getting Started](./getting-started.md#server) on how to launch a server.
 
 ### Client
-A Cloudfauj client lets you send commands to the server to create and manage environments, deploy applications and get information from the system.
+A Cloudfauj client lets you send commands to the server to [create and manage environments](./create-env.md), [deploy applications](./deploy-app.md) and get information about them.
 
 As of this writing, Cloudfauj provides a commandline client only. This can either be invoked manually by devs or ops or it can be integrated into a CI/CD pipeline such as jenkins.
 
@@ -32,10 +34,8 @@ Every time you ask Cloudfauj to run a new artifact for an existing application, 
 
 A successful deployment in the target environment replaces the currently running docker image with the desired one. A failed deployment exits with a non-zero code. This help you integrate cloudfauj in your CI/CD systems.
 
-Each deployment has a unique ID.
+Each deployment has a unique ID. See [Deploying an Application](./deploy-app.md)
 
-See [Deploying an Application](./deploy-app.md)
+**Previous**: [Getting Started](./getting-started.md)
 
-Previous: [Getting Started](./getting-started.md)
-
-Next: [Creating an Environment](./create-env.md)
+**Next**: [Creating an Environment](./create-env.md)
