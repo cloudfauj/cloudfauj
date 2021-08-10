@@ -3,7 +3,7 @@ Both Developers & Operators are users of Cloudfauj.
 
 Devs use it to deploy applications, whereas Ops use it to automate infrastructure provisioning.
 
-Cloudfauj is a single binary that can run both server and client. Download the latest commandline app from the Github [Releases]() Page. Move the binary to a directory included in your system's [PATH](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them).
+Cloudfauj is a single binary that can run both server and client. Download the latest commandline app from the Github [Releases](https://github.com/cloudfauj/cloudfauj/releases) Page. Move the binary to a directory included in your system's [PATH](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them).
 
 ---
 **NOTE**

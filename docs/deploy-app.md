@@ -6,7 +6,7 @@ Once you app is ready to run, you can use the Cloudfauj CLI to deploy it to an e
 ## Prerequisites
 As of today, Cloudfauj only focuses on deploying artifacts. It does not help build or publish them.
 
-Cloudfauj supports deploying Docker images from AWS ECR. So you need to pack your app inside a Docker image and [publish](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html) it to a public or private ECR repository. This can either be done manually or through a build system such as Jenkins.
+Cloudfauj supports deploying Docker images from AWS ECR to AWS ECS Fargate. So you need to pack your app inside a Docker image and [publish](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html) it to a public or private ECR repository. This can either be done manually or through a build system such as Jenkins.
 
 ## Configuration
 For cloudfauj to be able to run your container stably, it needs to understand the resources required by it.
