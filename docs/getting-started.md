@@ -5,6 +5,13 @@ Devs use it to deploy applications, whereas Ops use it to automate infrastructur
 
 Cloudfauj is a single binary that can run both server and client. Download the latest commandline app from the Github [Releases]() Page. Move the binary to a directory included in your system's [PATH](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them).
 
+---
+**NOTE**
+
+You can use `CGO_ENABLED=1 go build` if you want to build cloudfauj binary yourself.
+
+---
+
 Run `cloudfauj help` for help on all commands and options.
 
 ---
