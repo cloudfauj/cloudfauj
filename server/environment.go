@@ -7,6 +7,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"net/http"
+	"os"
+	"path"
 )
 
 func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +60,6 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 
 	env.Status = environment.StatusProvisioning
 	env.Infra = s.infra
-	env.Res = &environment.Resources{}
 
 	if err := s.state.CreateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to store env info in state: %v", err)
@@ -67,8 +68,16 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.WriteMessage(websocket.TextMessage, []byte("Registered in state"))
 
+	f, err := os.OpenFile(s.envTfFile(env.Name), os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		s.log.Errorf("Failed to create Terraform config file for env: %v", err)
+		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		return
+	}
+	defer f.Close()
+
 	eventsCh := make(chan environment.Event)
-	go env.Provision(r.Context(), eventsCh)
+	go env.Provision(r.Context(), f, eventsCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -154,6 +163,11 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
+	if err := os.Remove(s.envTfFile(env.Name)); err != nil {
+		s.log.Errorf("Failed to delete env TF config file from disk: %v", err)
+		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		return
+	}
 	if err := s.state.DeleteEnvironment(r.Context(), envName); err != nil {
 		s.log.Errorf("Failed to delete env from state: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
@@ -162,4 +176,8 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 
 	conn.WriteMessage(websocket.TextMessage, []byte("Environment destroyed successfully"))
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+}
+
+func (s *server) envTfFile(name string) string {
+	return path.Join(s.config.DataDir, TerraformDir, name+".tf")
 }

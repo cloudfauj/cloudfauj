@@ -3,46 +3,15 @@ package environment
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
 func (e *Environment) Destroy(ctx context.Context, eventsCh chan<- Event) {
 	defer close(eventsCh)
 
-	if err := e.destroyECSInfra(ctx); err != nil {
-		eventsCh <- Event{Err: err}
+	eventsCh <- Event{Msg: "Destroying Terraform infrastructure"}
+	if err := e.Infra.Tf.Destroy(ctx, tfexec.Target("module."+e.Name)); err != nil {
+		eventsCh <- Event{Err: fmt.Errorf("failed to destroy: %v", err)}
 		return
 	}
-	eventsCh <- Event{Msg: "Destroyed ECS fargate infrastructure"}
-
-	// destroy public route table
-	if err := e.Infra.RemoveGatewayRoute(ctx, e.Res.VpcId); err != nil {
-		eventsCh <- Event{Err: fmt.Errorf("failed to destroy default route table: %v", err)}
-		return
-	}
-	eventsCh <- Event{Msg: "Destroyed default route table"}
-
-	if err := e.Infra.DestroyInternetGateway(ctx, e.Res.VpcId, e.Res.InternetGateway); err != nil {
-		eventsCh <- Event{Err: fmt.Errorf("failed to destroy internet gateway: %v", err)}
-		return
-	}
-	eventsCh <- Event{Msg: "Destroyed internet gateway"}
-
-	if err := e.Infra.DestroyVPC(ctx, e.Res.VpcId); err != nil {
-		eventsCh <- Event{Err: fmt.Errorf("failed to destroy VPC: %v", err)}
-		return
-	}
-	eventsCh <- Event{Msg: "Destroyed VPC"}
-}
-
-func (e *Environment) destroyECSInfra(ctx context.Context) error {
-	if err := e.Infra.DeleteECSTaskExecIAMRole(ctx, e.Res.TaskExecIAMRole); err != nil {
-		return fmt.Errorf("failed to destroy IAM role for compute: %v", err)
-	}
-	if err := e.Infra.DestroyFargateCluster(ctx, e.Res.ECSCluster); err != nil {
-		return fmt.Errorf("failed to destroy ECS cluster: %v", err)
-	}
-	if err := e.Infra.DestroySubnet(ctx, e.Res.ComputeSubnet); err != nil {
-		return fmt.Errorf("failed to destroy compute subnet: %v", err)
-	}
-	return nil
 }

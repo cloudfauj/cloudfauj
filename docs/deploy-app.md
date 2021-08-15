@@ -19,7 +19,9 @@ Below is an example configuration:
 # Name uniquely identifies an application within an environment.
 # 2 apps cannot have the same name if they're in the same env.
 # However, they can have the same name if they're deployed to different envs.
-name: nginx-api
+# App name should only contain lowercase alphanumeric characters.
+# Multiple words should be separated by an underscore.
+name: nginx_api
 # Specifies the type of application. A value of "server" signifies a TCP server.
 # This is how you deploy REST APIs for eg. As of today, only server type is supported.
 type: server

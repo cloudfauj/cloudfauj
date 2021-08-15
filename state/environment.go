@@ -8,12 +8,7 @@ import (
 
 const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	name VARCHAR(100) NOT NULL PRIMARY KEY,
-	status VARCHAR(25) NOT NULL,
-	vpc_id VARCHAR(40),
-	internet_gateway VARCHAR(50),
-	ecs_cluster VARCHAR(100),
-	task_exec_iam_role VARCHAR(200),
-	compute_subnet VARCHAR(100)
+	status VARCHAR(25) NOT NULL
 )`
 
 func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
@@ -29,30 +24,12 @@ func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
 }
 
 func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environment) error {
-	q := `INSERT INTO environments(
-	name,
-	status,
-	vpc_id,
-	internet_gateway,
-	ecs_cluster,
-	task_exec_iam_role,
-	compute_subnet
-) VALUES(?, ?, ?, ?, ?, ?, ?)`
-
+	q := "INSERT INTO environments(name, status) VALUES(?, ?)"
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(
-		ctx,
-		e.Name,
-		e.Status,
-		e.Res.VpcId,
-		e.Res.InternetGateway,
-		e.Res.ECSCluster,
-		e.Res.TaskExecIAMRole,
-		e.Res.ComputeSubnet,
-	)
+	_, err = stmt.ExecContext(ctx, e.Name, e.Status)
 	if err != nil {
 		return err
 	}
@@ -60,30 +37,12 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 }
 
 func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environment) error {
-	q := `UPDATE environments
-SET
-	status = ?,
-	vpc_id = ?,
-	internet_gateway = ?,
-	ecs_cluster = ?,
-	task_exec_iam_role = ?,
-	compute_subnet = ?
-WHERE name = ?`
-
+	q := "UPDATE environments SET status = ? WHERE name = ?"
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(
-		ctx,
-		e.Status,
-		e.Res.VpcId,
-		e.Res.InternetGateway,
-		e.Res.ECSCluster,
-		e.Res.TaskExecIAMRole,
-		e.Res.ComputeSubnet,
-		e.Name,
-	)
+	_, err = stmt.ExecContext(ctx, e.Status, e.Name)
 	if err != nil {
 		return err
 	}
@@ -114,18 +73,11 @@ func (s *state) ListEnvironments(ctx context.Context) ([]string, error) {
 }
 
 func (s *state) Environment(ctx context.Context, name string) (*environment.Environment, error) {
-	e := &environment.Environment{Res: &environment.Resources{}}
+	var e environment.Environment
+
 	err := s.db.QueryRowContext(
 		ctx, "SELECT * FROM environments WHERE name = ?", name,
-	).Scan(
-		&e.Name,
-		&e.Status,
-		&e.Res.VpcId,
-		&e.Res.InternetGateway,
-		&e.Res.ECSCluster,
-		&e.Res.TaskExecIAMRole,
-		&e.Res.ComputeSubnet,
-	)
+	).Scan(&e.Name, &e.Status)
 	if err != nil {
 		// return nil response without any error if no such env found
 		if err == sql.ErrNoRows {
@@ -134,7 +86,7 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 		return nil, err
 	}
 
-	return e, nil
+	return &e, nil
 }
 
 func (s *state) DeleteEnvironment(ctx context.Context, name string) error {

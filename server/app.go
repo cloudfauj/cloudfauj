@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
-	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
-	infra "github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"time"
 )
@@ -135,7 +135,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 	// deploy app artifact
 	eventsCh := make(chan *Event)
-	go s.deployApp(r.Context(), &spec, app, e, eventsCh)
+	go s.deployApp(r.Context(), &spec, e, eventsCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -188,25 +188,18 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appInfra, err := s.state.AppInfra(r.Context(), app, env)
-	if err != nil {
-		s.log.Errorf("Failed to get app infra from state: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := s.destroyInfra(r.Context(), appInfra, envState); err != nil {
+	if err := s.destroyInfra(r.Context(), env, app); err != nil {
 		s.log.Errorf("Failed to destroy app infra: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if err := s.state.DeleteAppInfra(r.Context(), app, env); err != nil {
-		s.log.Errorf("Failed to delete app infra from state: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if err := s.state.DeleteApp(r.Context(), app, env); err != nil {
 		s.log.Errorf("Failed to delete app from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := os.Remove(s.appTfFile(env, app)); err != nil {
+		s.log.Errorf("Failed to delete app TF config file from disk: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -223,124 +216,73 @@ func (s *server) provisionInfra(
 ) {
 	defer close(e)
 
-	i := &infra.AppInfra{App: d.App.Name, Env: env.Name}
-	e <- &Event{Msg: "provisioning infrastructure for public application"}
+	e <- &Event{Msg: "provisioning infrastructure for application"}
 
-	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
-		Env:          env.Name,
-		Service:      d.App.Name,
-		TaskExecRole: env.Res.TaskExecIAMRole,
-		Image:        d.Artifact,
-		Cpu:          d.App.Resources.Cpu,
-		Memory:       d.App.Resources.Memory,
-		BindPort:     d.App.Resources.Network.BindPort,
-	})
+	tf := s.infra.AppTfConfig(env.Name, d)
+	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tf), 0666); err != nil {
+		e <- &Event{Err: fmt.Errorf("failed to create app terraform config : %v", err)}
+		return
+	}
+	if err := s.infra.Tf.Init(ctx); err != nil {
+		e <- &Event{Err: fmt.Errorf("failed to initialize terraform: %v", err)}
+		return
+	}
+	e <- &Event{Msg: "Applying Terraform configuration"}
+	module := fmt.Sprintf("module.%s_%s", env.Name, d.App.Name)
+	if err := s.infra.Tf.Apply(ctx, tfexec.Target(module)); err != nil {
+		e <- &Event{Err: fmt.Errorf("failed to apply terraform changes: %v", err)}
+		return
+	}
+
+	res, err := s.infra.Tf.Output(ctx)
 	if err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to create task definition: %v", err)}
+		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
-	i.EcsTaskDefinition = td
-	e <- &Event{Msg: "created ECS task definition"}
+	cluster, _ := res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value.MarshalJSON()
+	service, _ := res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value.MarshalJSON()
 
-	sg, err := s.infra.CreateSecurityGroup(ctx, env.Name, d.App.Name, env.Res.VpcId, d.App.Resources.Network.BindPort)
-	if err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to create security group: %v", err)}
-		return
-	}
-	i.SecurityGroup = sg
-	e <- &Event{Msg: "created security group"}
-
-	srv, err := s.infra.CreateECSService(ctx, &infra.ECSServiceParams{
-		Env:           env.Name,
-		Service:       d.App.Name,
-		Cluster:       env.Res.ECSCluster,
-		TaskDef:       i.EcsTaskDefinition,
-		ComputeSubnet: env.Res.ComputeSubnet,
-		SecurityGroup: i.SecurityGroup,
-	})
-	if err != nil {
-		e <- &Event{
-			Err: fmt.Errorf("failed to create ECS service: %v", err),
-		}
-		return
-	}
-	i.ECSService = srv
-	e <- &Event{Msg: "created ECS service"}
-
-	// todo: do we need to setup autoscaling separately? with fargate?
-
-	// register all infra resources in state
-	if err := s.state.CreateAppInfra(ctx, i); err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to register infra in state: %v", err)}
-		return
-	}
-
-	s.trackDeployment(ctx, env, i, e)
+	s.trackDeployment(ctx, string(cluster), string(service), e)
 }
 
 func (s *server) deployApp(
 	ctx context.Context,
 	d *deployment.Spec,
-	originalApp *application.Application,
 	env *environment.Environment,
 	e chan<- *Event,
 ) {
 	defer close(e)
 
-	if d.App.Resources.Network.BindPort != originalApp.Resources.Network.BindPort {
-		e <- &Event{Err: errors.New("changing bind port of application is not supported")}
+	// overwrite the existing app tf config with new one
+	tf := s.infra.AppTfConfig(env.Name, d)
+	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tf), 0666); err != nil {
+		e <- &Event{Err: fmt.Errorf("failed to create app terraform config : %v", err)}
 		return
 	}
-
-	i, err := s.state.AppInfra(ctx, d.App.Name, env.Name)
+	e <- &Event{Msg: "Applying Terraform configuration"}
+	module := fmt.Sprintf("module.%s_%s", env.Name, d.App.Name)
+	if err := s.infra.Tf.Apply(ctx, tfexec.Target(module)); err != nil {
+		e <- &Event{Err: fmt.Errorf("failed to apply terraform changes: %v", err)}
+		return
+	}
+	res, err := s.infra.Tf.Output(ctx)
 	if err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to fetch app state: %v", err)}
+		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
+	cluster := res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value
+	service := res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value
 
-	td, err := s.infra.CreateTaskDefinition(ctx, &infra.TaskDefintionParams{
-		Env:          env.Name,
-		Service:      d.App.Name,
-		TaskExecRole: env.Res.TaskExecIAMRole,
-		Image:        d.Artifact,
-		Cpu:          d.App.Resources.Cpu,
-		Memory:       d.App.Resources.Memory,
-		BindPort:     d.App.Resources.Network.BindPort,
-	})
-	if err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to create new task definition: %v", err)}
-		return
-	}
-	i.EcsTaskDefinition = td
-	e <- &Event{Msg: "created new ECS task definition"}
-
-	if err := s.infra.UpdateECSService(ctx, d.App.Name, env.Res.ECSCluster, i.EcsTaskDefinition); err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to update ECS service: %v", err)}
-		return
-	}
-	e <- &Event{Msg: "updated ECS service"}
-
-	if err := s.state.UpdateAppInfra(ctx, i); err != nil {
-		e <- &Event{Err: fmt.Errorf("failed to update app infra state: %v", err)}
-		return
-	}
-	e <- &Event{Msg: "updated app infra state"}
-
-	s.trackDeployment(ctx, env, i, e)
+	s.trackDeployment(ctx, string(cluster), string(service), e)
 }
 
 // trackDeployment polls the latest ECS deployment and streams the status until
 // the deployment has completed or failed off.
-func (s *server) trackDeployment(
-	ctx context.Context,
-	env *environment.Environment,
-	i *infra.AppInfra,
-	e chan<- *Event,
-) {
+func (s *server) trackDeployment(ctx context.Context, ecsCluster, ecsService string, e chan<- *Event) {
 	// todo: improve timeout logic
 	for j := 0; j < 120; j++ {
 		e <- &Event{Msg: "Deploying application to ECS..."}
-		d, err := s.infra.ECSServicePrimaryDeployment(ctx, i.ECSService, env.Res.ECSCluster)
+		d, err := s.infra.ECSServicePrimaryDeployment(ctx, ecsService, ecsCluster)
 		if err != nil {
 			s.log.Errorf("Failed to fetch deployment information from ECS: %v", err)
 		}
@@ -357,26 +299,14 @@ func (s *server) trackDeployment(
 	e <- &Event{Err: errors.New("deployment polling timeout reached")}
 }
 
-func (s *server) destroyInfra(ctx context.Context, app *infra.AppInfra, env *environment.Environment) error {
-	// todo: determine if we want to delete task definition(s) as well
-	//  this has been left out for now
-
-	if err := s.infra.DestroyECSService(ctx, app.ECSService, env.Res.ECSCluster); err != nil {
-		return fmt.Errorf("failed to delete ECS Service: %v", err)
-	}
-	// todo: improve the timeout logic
-	for i := 0; i < 40; i++ {
-		s.log.Info("Draining ECS service...")
-		time.Sleep(time.Second * 5)
-
-		status, err := s.infra.ECSServiceStatus(ctx, app.ECSService, env.Res.ECSCluster)
-		if err == nil && status == "INACTIVE" {
-			s.log.Info("Done")
-			break
-		}
-	}
-	if err := s.infra.DestroySecurityGroup(ctx, app.SecurityGroup); err != nil {
-		return fmt.Errorf("failed to delete security group: %v", err)
+func (s *server) destroyInfra(ctx context.Context, env, app string) error {
+	module := fmt.Sprintf("module.%s_%s", env, app)
+	if err := s.infra.Tf.Destroy(ctx, tfexec.Target(module)); err != nil {
+		return fmt.Errorf("failed to destroy terraform infra: %v", err)
 	}
 	return nil
+}
+
+func (s *server) appTfFile(env, app string) string {
+	return path.Join(s.config.DataDir, TerraformDir, fmt.Sprintf("%s_%s.tf", env, app))
 }

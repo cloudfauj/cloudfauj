@@ -12,8 +12,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.7.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/terraform-exec v0.14.0
 	github.com/mattn/go-sqlite3 v1.14.8
-	github.com/sirupsen/logrus v1.2.0
+	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.8.1
 )

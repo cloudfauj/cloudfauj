@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
-	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,11 +33,6 @@ type State interface {
 	UpdateApp(context.Context, *application.Application, string) error
 	App(context.Context, string, string) (*application.Application, error)
 	DeleteApp(context.Context, string, string) error
-
-	CreateAppInfra(context.Context, *infrastructure.AppInfra) error
-	UpdateAppInfra(context.Context, *infrastructure.AppInfra) error
-	AppInfra(context.Context, string, string) (*infrastructure.AppInfra, error)
-	DeleteAppInfra(context.Context, string, string) error
 }
 
 type state struct {

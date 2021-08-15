@@ -26,6 +26,8 @@ The `env create` command lets you create a new environment. You need to supply a
 ---
 # Name uniquely identifies an environment in cloudfauj.
 # 2 environments cannot have the same name.
+# Env name should only contain lowercase alphanumeric characters.
+# Multiple words should be separated by an underscore.
 name: staging
 ```
 

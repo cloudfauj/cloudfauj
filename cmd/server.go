@@ -1,16 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
-	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/cloudfauj/cloudfauj/state"
+	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/hashicorp/terraform-exec/tfinstall"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -49,22 +50,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	log := logrus.New()
-	// todo: further configuration of logger
-
-	if err := setupDataDir(log, srvCfg.DataDir); err != nil {
-		return fmt.Errorf("failed to setup server data directory: %v", err)
-	}
-
-	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
-	if err != nil {
-		return fmt.Errorf("failed to open database connection: %v", err)
-	}
-	defer db.Close()
-
-	storage := state.New(log, db)
-	if err := storage.Migrate(cmd.Context()); err != nil {
-		return fmt.Errorf("failed to run DB migrations: %v", err)
-	}
+	//log.SetLevel(logrus.DebugLevel)
 
 	log.Info("Validating AWS credentials")
 	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
@@ -78,14 +64,36 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no AWS credentials supplied, cannot proceed")
 	}
 
-	infra := infrastructure.New(
-		log,
-		ec2.NewFromConfig(awsCfg),
-		ecs.NewFromConfig(awsCfg),
-		iam.NewFromConfig(awsCfg),
-		elasticloadbalancingv2.NewFromConfig(awsCfg),
-		awsCfg.Region,
+	if err := setupDataDir(cmd.Context(), log, srvCfg.DataDir, awsCfg.Region); err != nil {
+		return fmt.Errorf("failed to setup server data directory: %v", err)
+	}
+	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
+	if err != nil {
+		return fmt.Errorf("failed to open database connection: %v", err)
+	}
+	defer db.Close()
+
+	storage := state.New(log, db)
+	if err := storage.Migrate(cmd.Context()); err != nil {
+		return fmt.Errorf("failed to run DB migrations: %v", err)
+	}
+
+	// setup terraform
+	tf, err := tfexec.NewTerraform(
+		path.Join(srvCfg.DataDir, server.TerraformDir),
+		path.Join(srvCfg.DataDir, "terraform"),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create new terraform object: %s", err)
+	}
+	// Pass the server process' environment variables to Terraform process
+	tf.SetEnv(nil)
+	// Set logging
+	tf.SetLogger(log)
+	tf.SetStderr(os.Stderr)
+	tf.SetStdout(os.Stdout)
+
+	infra := infrastructure.New(log, tf, ec2.NewFromConfig(awsCfg), ecs.NewFromConfig(awsCfg), awsCfg.Region)
 	apiServer := server.New(&srvCfg, log, storage, infra)
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
 
@@ -96,7 +104,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func setupDataDir(log *logrus.Logger, dir string) error {
+func setupDataDir(ctx context.Context, log *logrus.Logger, dir, awsRegion string) error {
 	// return if the data dir already exists
 	_, err := os.Stat(dir)
 	if err == nil {
@@ -110,12 +118,35 @@ func setupDataDir(log *logrus.Logger, dir string) error {
 
 	log.WithField("dir", dir).Info("Setting up server data directory")
 
-	var subDirs = []string{server.DBDir, server.DeploymentsDir}
+	var subDirs = []string{server.DBDir, server.DeploymentsDir, server.TerraformDir}
 	for _, sd := range subDirs {
 		d := path.Join(dir, sd)
 		if err := os.MkdirAll(d, 0755); err != nil {
 			return fmt.Errorf("failed to create %s: %v", d, err)
 		}
+	}
+	return setupTerraform(ctx, log, dir, awsRegion)
+}
+
+func setupTerraform(ctx context.Context, log *logrus.Logger, dir, region string) error {
+	tfDir := path.Join(dir, server.TerraformDir)
+
+	log.Info("Downloading Terraform v" + server.TerraformVersion)
+	execPath, err := tfinstall.Find(ctx, tfinstall.ExactVersion(server.TerraformVersion, dir))
+	if err != nil {
+		return fmt.Errorf("failed to locate Terraform binary: %s", err)
+	}
+
+	os.WriteFile(path.Join(tfDir, server.TerraformConfFile), []byte(server.TfConfig(region)), 0666)
+
+	tf, err := tfexec.NewTerraform(tfDir, execPath)
+	if err != nil {
+		return fmt.Errorf("failed to create new terraform object: %s", err)
+	}
+
+	log.Info("Initializing Terraform")
+	if err := tf.Init(ctx, tfexec.Upgrade(true)); err != nil {
+		return fmt.Errorf("failed to initialize: %s", err)
 	}
 	return nil
 }
