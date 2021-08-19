@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -239,10 +240,12 @@ func (s *server) provisionInfra(
 		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
-	cluster, _ := res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value.MarshalJSON()
-	service, _ := res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value.MarshalJSON()
+	cluster := string(res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value)
+	cluster = strings.Trim(cluster, "\"")
+	service := string(res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value)
+	service = strings.Trim(service, "\"")
 
-	s.trackDeployment(ctx, string(cluster), string(service), e)
+	s.trackDeployment(ctx, cluster, service, e)
 }
 
 func (s *server) deployApp(
@@ -270,10 +273,12 @@ func (s *server) deployApp(
 		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
-	cluster := res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value
-	service := res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value
+	cluster := string(res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value)
+	cluster = strings.Trim(cluster, "\"")
+	service := string(res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value)
+	service = strings.Trim(service, "\"")
 
-	s.trackDeployment(ctx, string(cluster), string(service), e)
+	s.trackDeployment(ctx, cluster, service, e)
 }
 
 // trackDeployment polls the latest ECS deployment and streams the status until

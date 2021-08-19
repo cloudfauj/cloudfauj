@@ -32,7 +32,6 @@ func NewClient(serverAddr string) (*API, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid server url %s: %v", serverAddr, err)
 	}
-
 	return &API{
 		HttpClient: &http.Client{Timeout: 10 * time.Minute},
 		WsDialer:   websocket.DefaultDialer,
