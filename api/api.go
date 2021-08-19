@@ -34,7 +34,7 @@ func NewClient(serverAddr string) (*API, error) {
 	}
 
 	return &API{
-		HttpClient: &http.Client{Timeout: time.Minute},
+		HttpClient: &http.Client{Timeout: 10 * time.Minute},
 		WsDialer:   websocket.DefaultDialer,
 		baseURL:    u,
 	}, nil
