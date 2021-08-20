@@ -100,3 +100,6 @@ Done
 **Previous**: [Creating an environment](./create-env.md)
 
 **Top**: [Table of Contents](../README.md#documentation)
+
+## Limitations
+1. Within an environment, only a single application should be deployed at a time. Once the deployment is finished, you can proceed to deploy another. This is a temporary limitation due to [Terraform's State Locking](https://www.terraform.io/docs/language/state/locking.html).

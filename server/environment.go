@@ -68,6 +68,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.WriteMessage(websocket.TextMessage, []byte("Registered in state"))
 
+	os.Mkdir(s.envTfDir(env.Name), 0755)
 	f, err := os.OpenFile(s.envTfFile(env.Name), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		s.log.Errorf("Failed to create Terraform config file for env: %v", err)
@@ -77,7 +78,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	eventsCh := make(chan environment.Event)
-	go env.Provision(r.Context(), f, eventsCh)
+	go env.Provision(r.Context(), s.envTfDir(env.Name), f, eventsCh)
 
 	for e := range eventsCh {
 		if e.Err != nil {
@@ -163,7 +164,7 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
 	}
 
-	if err := os.Remove(s.envTfFile(env.Name)); err != nil {
+	if err := os.RemoveAll(s.envTfDir(env.Name)); err != nil {
 		s.log.Errorf("Failed to delete env TF config file from disk: %v", err)
 		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
 		return
@@ -178,6 +179,10 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
 }
 
+func (s *server) envTfDir(name string) string {
+	return path.Join(s.config.DataDir, TerraformDir, name)
+}
+
 func (s *server) envTfFile(name string) string {
-	return path.Join(s.config.DataDir, TerraformDir, name+".tf")
+	return path.Join(s.envTfDir(name), TerraformConfFile)
 }

@@ -219,30 +219,34 @@ func (s *server) provisionInfra(
 
 	e <- &Event{Msg: "provisioning infrastructure for application"}
 
-	tf := s.infra.AppTfConfig(env.Name, d)
-	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tf), 0666); err != nil {
+	tf, err := s.infra.Tf(env.Name)
+	if err != nil {
+		e <- &Event{Err: err}
+		return
+	}
+	tfConfig := s.infra.AppTfConfig(env.Name, d)
+	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tfConfig), 0666); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to create app terraform config : %v", err)}
 		return
 	}
-	if err := s.infra.Tf.Init(ctx); err != nil {
+	if err := tf.Init(ctx); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to initialize terraform: %v", err)}
 		return
 	}
 	e <- &Event{Msg: "Applying Terraform configuration"}
-	module := fmt.Sprintf("module.%s_%s", env.Name, d.App.Name)
-	if err := s.infra.Tf.Apply(ctx, tfexec.Target(module)); err != nil {
+	if err := tf.Apply(ctx); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to apply terraform changes: %v", err)}
 		return
 	}
 
-	res, err := s.infra.Tf.Output(ctx)
+	res, err := tf.Output(ctx)
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
-	cluster := string(res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value)
+	cluster := string(res["ecs_cluster_arn"].Value)
 	cluster = strings.Trim(cluster, "\"")
-	service := string(res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value)
+	service := string(res[d.App.Name+"_ecs_service"].Value)
 	service = strings.Trim(service, "\"")
 
 	s.trackDeployment(ctx, cluster, service, e)
@@ -256,26 +260,30 @@ func (s *server) deployApp(
 ) {
 	defer close(e)
 
+	tf, err := s.infra.Tf(env.Name)
+	if err != nil {
+		e <- &Event{Err: err}
+		return
+	}
 	// overwrite the existing app tf config with new one
-	tf := s.infra.AppTfConfig(env.Name, d)
-	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tf), 0666); err != nil {
+	tfConfig := s.infra.AppTfConfig(env.Name, d)
+	if err := os.WriteFile(s.appTfFile(env.Name, d.App.Name), []byte(tfConfig), 0666); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to create app terraform config : %v", err)}
 		return
 	}
 	e <- &Event{Msg: "Applying Terraform configuration"}
-	module := fmt.Sprintf("module.%s_%s", env.Name, d.App.Name)
-	if err := s.infra.Tf.Apply(ctx, tfexec.Target(module)); err != nil {
+	if err := tf.Apply(ctx); err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to apply terraform changes: %v", err)}
 		return
 	}
-	res, err := s.infra.Tf.Output(ctx)
+	res, err := tf.Output(ctx)
 	if err != nil {
 		e <- &Event{Err: fmt.Errorf("failed to read terraform output: %v", err)}
 		return
 	}
-	cluster := string(res[fmt.Sprintf("%s_ecs_cluster_arn", env.Name)].Value)
+	cluster := string(res["ecs_cluster_arn"].Value)
 	cluster = strings.Trim(cluster, "\"")
-	service := string(res[fmt.Sprintf("%s_%s_ecs_service", env.Name, d.App.Name)].Value)
+	service := string(res[d.App.Name+"_ecs_service"].Value)
 	service = strings.Trim(service, "\"")
 
 	s.trackDeployment(ctx, cluster, service, e)
@@ -305,13 +313,16 @@ func (s *server) trackDeployment(ctx context.Context, ecsCluster, ecsService str
 }
 
 func (s *server) destroyInfra(ctx context.Context, env, app string) error {
-	module := fmt.Sprintf("module.%s_%s", env, app)
-	if err := s.infra.Tf.Destroy(ctx, tfexec.Target(module)); err != nil {
+	tf, err := s.infra.Tf(env)
+	if err != nil {
+		return err
+	}
+	if err := tf.Destroy(ctx, tfexec.Target("module."+app)); err != nil {
 		return fmt.Errorf("failed to destroy terraform infra: %v", err)
 	}
 	return nil
 }
 
 func (s *server) appTfFile(env, app string) string {
-	return path.Join(s.config.DataDir, TerraformDir, fmt.Sprintf("%s_%s.tf", env, app))
+	return path.Join(s.envTfDir(env), app+".tf")
 }

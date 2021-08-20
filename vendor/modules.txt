@@ -92,16 +92,6 @@ github.com/aws/aws-sdk-go-v2/service/ec2/types
 github.com/aws/aws-sdk-go-v2/service/ecs
 github.com/aws/aws-sdk-go-v2/service/ecs/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ecs/types
-# github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.5.0
-## explicit
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types
-# github.com/aws/aws-sdk-go-v2/service/iam v1.7.0
-## explicit
-github.com/aws/aws-sdk-go-v2/service/iam
-github.com/aws/aws-sdk-go-v2/service/iam/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/iam/types
 # github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.2.1
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
 # github.com/aws/aws-sdk-go-v2/service/sso v1.3.1

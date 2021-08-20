@@ -50,7 +50,6 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	log := logrus.New()
-	//log.SetLevel(logrus.DebugLevel)
 
 	log.Info("Validating AWS credentials")
 	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
@@ -64,7 +63,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no AWS credentials supplied, cannot proceed")
 	}
 
-	if err := setupDataDir(cmd.Context(), log, srvCfg.DataDir, awsCfg.Region); err != nil {
+	if err := setupDataDir(cmd.Context(), log, srvCfg.DataDir); err != nil {
 		return fmt.Errorf("failed to setup server data directory: %v", err)
 	}
 	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
@@ -78,22 +77,20 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run DB migrations: %v", err)
 	}
 
-	// setup terraform
-	tf, err := tfexec.NewTerraform(
+	// TODO: Inject Terraform object from here
+	//  Currently, we can't do this because we need to execute the shared tf object
+	//  in different working dirs. This is only possible with the -chdir option,
+	//  support for which is currently not merged into terraform-exec.
+	//  See https://github.com/hashicorp/terraform-exec/pull/100.
+
+	infra := infrastructure.New(
+		log,
+		ec2.NewFromConfig(awsCfg),
+		ecs.NewFromConfig(awsCfg),
+		awsCfg.Region,
 		path.Join(srvCfg.DataDir, server.TerraformDir),
 		path.Join(srvCfg.DataDir, "terraform"),
 	)
-	if err != nil {
-		return fmt.Errorf("failed to create new terraform object: %s", err)
-	}
-	// Pass the server process' environment variables to Terraform process
-	tf.SetEnv(nil)
-	// Set logging
-	tf.SetLogger(log)
-	tf.SetStderr(os.Stderr)
-	tf.SetStdout(os.Stdout)
-
-	infra := infrastructure.New(log, tf, ec2.NewFromConfig(awsCfg), ecs.NewFromConfig(awsCfg), awsCfg.Region)
 	apiServer := server.New(&srvCfg, log, storage, infra)
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
 
@@ -104,7 +101,7 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func setupDataDir(ctx context.Context, log *logrus.Logger, dir, awsRegion string) error {
+func setupDataDir(ctx context.Context, log *logrus.Logger, dir string) error {
 	// return if the data dir already exists
 	_, err := os.Stat(dir)
 	if err == nil {
@@ -125,10 +122,10 @@ func setupDataDir(ctx context.Context, log *logrus.Logger, dir, awsRegion string
 			return fmt.Errorf("failed to create %s: %v", d, err)
 		}
 	}
-	return setupTerraform(ctx, log, dir, awsRegion)
+	return setupTerraform(ctx, log, dir)
 }
 
-func setupTerraform(ctx context.Context, log *logrus.Logger, dir, region string) error {
+func setupTerraform(ctx context.Context, log *logrus.Logger, dir string) error {
 	tfDir := path.Join(dir, server.TerraformDir)
 
 	log.Info("Downloading Terraform v" + server.TerraformVersion)
@@ -136,9 +133,6 @@ func setupTerraform(ctx context.Context, log *logrus.Logger, dir, region string)
 	if err != nil {
 		return fmt.Errorf("failed to locate Terraform binary: %s", err)
 	}
-
-	os.WriteFile(path.Join(tfDir, server.TerraformConfFile), []byte(server.TfConfig(region)), 0666)
-
 	tf, err := tfexec.NewTerraform(tfDir, execPath)
 	if err != nil {
 		return fmt.Errorf("failed to create new terraform object: %s", err)

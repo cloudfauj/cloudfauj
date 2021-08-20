@@ -13,7 +13,7 @@ import (
 
 const appTfModule = "github.com/cloudfauj/terraform-template.git//app?ref=90fceb4"
 
-const appTfConfig = `module "{{.env}}_{{.app}}" {
+const appTfConfig = `module "{{.app}}" {
   source                      = "{{.source}}"
   main_vpc_id                 = module.{{.env}}.main_vpc_id
   ecs_cluster_arn             = module.{{.env}}.compute_ecs_cluster_arn
@@ -28,8 +28,8 @@ const appTfConfig = `module "{{.env}}_{{.app}}" {
   ecr_image    = "{{.ecr_image}}"
 }
 
-output "{{.env}}_{{.app}}_ecs_service" {
-  value = module.{{.env}}_{{.app}}.ecs_service
+output "{{.app}}_ecs_service" {
+  value = module.{{.app}}.ecs_service
 }`
 
 func (i *Infrastructure) ECSService(ctx context.Context, service, cluster string) (types.Service, error) {

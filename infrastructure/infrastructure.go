@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -10,30 +11,55 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/sirupsen/logrus"
 	"net"
+	"os"
+	"path"
+	"strings"
+	"text/template"
 )
 
 const (
-	VPCFrozenBits  = 16
-	MinVPCCidr     = "10.0.0.0/16"
-	LargestVPCCidr = "10.0.0.0/8"
+	VPCFrozenBits               = 16
+	MinVPCCidr                  = "10.0.0.0/16"
+	LargestVPCCidr              = "10.0.0.0/8"
+	TerraformAwsProviderVersion = "3.54.0"
 )
 
+const tfConfigTpl = `terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "{{.aws_provider_version}}"
+    }
+  }
+}
+
+provider "aws" {
+  region = "{{.aws_region}}"
+}`
+
 type Infrastructure struct {
-	Tf     *tfexec.Terraform
-	region string
-	log    *logrus.Logger
-	ec2    *ec2.Client
-	ecs    *ecs.Client
+	region       string
+	log          *logrus.Logger
+	ec2          *ec2.Client
+	ecs          *ecs.Client
+	tfConfigDir  string
+	tfBinaryPath string
 }
 
 func New(
 	l *logrus.Logger,
-	tf *tfexec.Terraform,
 	ec2 *ec2.Client,
 	ecs *ecs.Client,
-	region string,
+	region, tfDir, tfBin string,
 ) *Infrastructure {
-	return &Infrastructure{log: l, Tf: tf, ec2: ec2, ecs: ecs, region: region}
+	return &Infrastructure{
+		log:          l,
+		ec2:          ec2,
+		ecs:          ecs,
+		region:       region,
+		tfConfigDir:  tfDir,
+		tfBinaryPath: tfBin,
+	}
 }
 
 // NextAvailableCIDR returns the first /16 CIDR available for use in the target AWS account-region
@@ -62,4 +88,30 @@ func (i *Infrastructure) NextAvailableCIDR(ctx context.Context) (string, error) 
 		}
 		proposed = next
 	}
+}
+
+func (i *Infrastructure) Tf(workSubDir string) (*tfexec.Terraform, error) {
+	tf, err := tfexec.NewTerraform(path.Join(i.tfConfigDir, workSubDir), i.tfBinaryPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new terraform object: %s", err)
+	}
+	// Pass the server process' environment variables to Terraform process
+	tf.SetEnv(nil)
+	// Set logging
+	tf.SetLogger(i.log)
+	tf.SetStderr(os.Stderr)
+	tf.SetStdout(os.Stdout)
+
+	return tf, nil
+}
+
+func (i *Infrastructure) TfConfig() string {
+	var b strings.Builder
+	t := template.Must(template.New("").Parse(tfConfigTpl))
+	data := map[string]interface{}{
+		"aws_region":           i.region,
+		"aws_provider_version": TerraformAwsProviderVersion,
+	}
+	t.Execute(&b, data)
+	return b.String()
 }

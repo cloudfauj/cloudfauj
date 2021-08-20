@@ -1,9 +1,6 @@
 package server
 
-import (
-	"fmt"
-	"path"
-)
+import "path"
 
 type Config struct {
 	// DataDir is the base directory inside which Cloudfauj server
@@ -21,29 +18,10 @@ const (
 )
 
 const (
-	TerraformDir                = "infrastructure"
-	TerraformVersion            = "1.0.4"
-	TerraformConfFile           = "terraform.tf"
-	TerraformAwsProviderVersion = "3.54.0"
+	TerraformDir      = "infrastructure"
+	TerraformVersion  = "1.0.4"
+	TerraformConfFile = "terraform.tf"
 )
-
-const tfConfig = `terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "%s"
-    }
-  }
-}
-
-provider "aws" {
-  region = "%s"
-}
-`
-
-func TfConfig(region string) string {
-	return fmt.Sprintf(tfConfig, TerraformAwsProviderVersion, region)
-}
 
 func (c *Config) DBFilePath() string {
 	return path.Join(c.DataDir, DBDir, DBServerFilename)
