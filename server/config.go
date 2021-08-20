@@ -19,7 +19,7 @@ const (
 
 const (
 	TerraformDir      = "infrastructure"
-	TerraformVersion  = "1.0.4"
+	TerraformVersion  = "1.0.5"
 	TerraformConfFile = "terraform.tf"
 )
 

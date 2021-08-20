@@ -21,7 +21,7 @@ const (
 	VPCFrozenBits               = 16
 	MinVPCCidr                  = "10.0.0.0/16"
 	LargestVPCCidr              = "10.0.0.0/8"
-	TerraformAwsProviderVersion = "3.54.0"
+	TerraformAwsProviderVersion = "3.55.0"
 )
 
 const tfConfigTpl = `terraform {
