@@ -14,12 +14,7 @@ You can use `CGO_ENABLED=1 go build` if you want to build cloudfauj binary yours
 
 Run `cloudfauj help` for help on all commands and options.
 
----
-**NOTE**
-
 Cloudfauj currently only supports Mac & Linux.
-
----
 
 ## Server
 Cloudfauj [Server](./concepts.md#architecture) is self-hosted. Though you can easily run it on your local workstation, we recommend running it on a VPS.
@@ -70,15 +65,26 @@ data_dir: '/var/lib/cloudfauj'
 Start the server using the `server` command:
 
 ```
+# As an example, we provide AWS credentials via a profile setup on the host
+$ export AWS_PROFILE=my_aws_profile
+
 $ cloudfauj server --config cf-server.yml
-INFO[0000] Setting up server data directory              dir=/var/lib/cloudfauj
 INFO[0000] Validating AWS credentials
-INFO[0000] Starting CloudFauj Server                     bind_addr="0.0.0.0:6200"
+INFO[0000] Setting up server data directory              dir=/var/lib/cloudfauj
+INFO[0000] Downloading Terraform v1.0.4
+INFO[0002] Initializing Terraform
+INFO[0002] Starting CloudFauj Server                     bind_addr="0.0.0.0:6200"
 ```
+
+When Cloudfauj server is started for the first time, it performs some additional tasks like setting up its base data dir and Terraform.
 
 Try invoking the client to verify that your server is running as expected:
 ```
 $ cloudfauj env list
+No environments created yet
+
+# Or specify the server address
+$ cloudfauj --server-addr http://127.0.0.1:6200 env list
 No environments created yet
 ```
 

@@ -3,7 +3,7 @@
 
 CloudFauj is a self-serve platform for developers to deploy containers without having to provision and manage the infrastructure for them.
 
-It is self-hosted, creates resources in your AWS Account and aims to provide your DevOps team full flexibility and control over these resources.  
+It is self-hosted, manages resources in your AWS Account via [Terraform](https://www.terraform.io/) and aims to provide your DevOps team full flexibility and control over them.
 
 ## For Devs
 Developers can focus on building their applications. Once done, they add a `.cloudfauj.yml` to their project dir to declare the resources an app needs to run.
@@ -14,6 +14,8 @@ They then use Cloudfauj, either as a CLI tool or as part of their CI/CD pipeline
 Ops teams use Cloudfauj to create and manage [environments](./docs/concepts.md#environment) in their own AWS account.
 
 Cloudfauj automates creating all resources to run apps in different environments. This removes toil for Ops, while still giving them an extremely high degree of control over the infrastructure & costs.
+
+Because Cloudfauj provisions all resources via Terraform, Ops get the full benefits of [Infrastructure as Code](https://en.wikipedia.org/wiki/Infrastructure_as_code).
 
 ---
 **NOTE**

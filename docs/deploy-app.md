@@ -70,6 +70,8 @@ Once deployed, you can get the IP of the app from ECS dashboard, then access it 
 
 Subsequent deployments automatically change the infra based on updated requirements in the app config.
 
+Note that logs produced by apps can be found in cloudwatch.
+
 ```
 # Changed the image tag from latest to v1.0.3
 $ cloudfauj deploy --env staging xxxxxxxxxxxx.dkr.ecr.ap-south-1.amazonaws.com/demo-server:v1.0.3

@@ -36,6 +36,13 @@ A successful deployment in the target environment replaces the currently running
 
 Each deployment has a unique ID. See [Deploying an Application](./deploy-app.md)
 
+### Terraform
+Unlike other Infrastructure management tools, Cloudfauj doesn't directly create cloud resources.
+
+Instead, it provisions them via Terraform to give Ops teams the complete benefits of IaC. Infra for all environments and applications is managed in this way and the configurations can be found inside the `infrastructure` directory in the [root dir](./getting-started.md#configuration).
+
+In future, we'll make it easier for users to modify TF code directly so they can fully customize their resources while enjoiying the automation provided by Cloudfauj.
+
 **Previous**: [Getting Started](./getting-started.md)
 
 **Next**: [Creating an Environment](./create-env.md)
