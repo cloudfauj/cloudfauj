@@ -2,14 +2,11 @@ package api
 
 import (
 	"fmt"
-	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"net/url"
 	"time"
 )
-
-const Version = server.ApiV1Prefix
 
 // API represents a client that can interact with a Cloudfauj Server REST API
 type API struct {

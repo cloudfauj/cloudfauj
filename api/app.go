@@ -16,7 +16,7 @@ func (a *API) Deploy(spec *deployment.Spec) (<-chan *ServerEvent, error) {
 }
 
 func (a *API) DestroyApp(app, env string) error {
-	u := a.constructHttpURL("/app/"+app, queryParams{"env": env})
+	u := a.constructHttpURL("/app/"+app, qp{"env": env})
 	req, _ := http.NewRequest(http.MethodDelete, u, nil)
 
 	res, err := a.HttpClient.Do(req)

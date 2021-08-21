@@ -2,24 +2,25 @@ package api
 
 import (
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/gorilla/websocket"
 	"net/url"
 	"path"
 )
 
-// queryParams holds URL query parameters in a structured way
-type queryParams map[string]string
+// qp holds URL query parameters in a structured way
+type qp map[string]string
 
 func (a *API) constructWsURL(p string) string {
 	return a.constructURL("ws", p, nil)
 }
 
-func (a *API) constructHttpURL(p string, q queryParams) string {
+func (a *API) constructHttpURL(p string, q qp) string {
 	return a.constructURL(a.baseURL.Scheme, p, q)
 }
 
-func (a *API) constructURL(s, p string, q queryParams) string {
-	u := url.URL{Scheme: s, Host: a.baseURL.Host, Path: path.Join("/"+Version, p)}
+func (a *API) constructURL(s, p string, q qp) string {
+	u := url.URL{Scheme: s, Host: a.baseURL.Host, Path: path.Join("/"+server.ApiV1Prefix, p)}
 	// set query parameters while preserving any previous ones
 	if q != nil {
 		original := u.Query()
@@ -31,6 +32,8 @@ func (a *API) constructURL(s, p string, q queryParams) string {
 	return u.String()
 }
 
+// makeWebsocketRequest creates a websocket connection to the server,
+// sends an optional payload first, then streams all messages received from it.
 func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *ServerEvent, error) {
 	eventsCh := make(chan *ServerEvent)
 
