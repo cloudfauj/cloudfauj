@@ -25,34 +25,36 @@ func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := wsManager{wsConn}
+
 	var env *environment.Environment
-
-	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
-	defer conn.Close()
-
 	if err := conn.ReadJSON(&env); err != nil {
-		s.log.Errorf("Failed to read env config: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		s.log.Errorf("Failed to read environment config: %v", err)
+		conn.sendFailureISE()
 		return
 	}
 	if err := env.CheckIsValid(); err != nil {
-		conn.WriteMessage(
-			websocket.TextMessage,
-			[]byte(fmt.Sprintf("Invalid environment config: %v", err)),
+		conn.sendFailure(
+			fmt.Sprintf("Invalid environment config: %v", err),
+			websocket.CloseInvalidFramePayloadData,
 		)
-		_ = sendWSClosureMsg(conn, websocket.CloseInvalidFramePayloadData)
 		return
 	}
 
 	ok, err := s.state.CheckEnvExists(r.Context(), env.Name)
 	if err != nil {
 		s.log.Errorf("Failed to check if env exists: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if ok {
-		conn.WriteMessage(websocket.TextMessage, []byte("Environment already exists"))
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		conn.sendFailure("Environment already exists", websocket.ClosePolicyViolation)
 		return
 	}
 
@@ -60,19 +62,22 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 
 	env.Status = environment.StatusProvisioning
 	env.Infra = s.infra
-
 	if err := s.state.CreateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to store env info in state: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
-	conn.WriteMessage(websocket.TextMessage, []byte("Registered in state"))
+	conn.sendTextMsg("Registered in state")
 
-	os.Mkdir(s.envTfDir(env.Name), 0755)
+	if err := os.Mkdir(s.envTfDir(env.Name), 0755); err != nil {
+		s.log.Errorf("Failed to create directory for env: %v", err)
+		conn.sendFailureISE()
+		return
+	}
 	f, err := os.OpenFile(s.envTfFile(env.Name), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		s.log.Errorf("Failed to create Terraform config file for env: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	defer f.Close()
@@ -80,47 +85,49 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	eventsCh := make(chan environment.Event)
 	go env.Provision(r.Context(), s.envTfDir(env.Name), f, eventsCh)
 
+	// TODO: revisit the whole channel message passing thing
 	for e := range eventsCh {
 		if e.Err != nil {
 			s.log.Errorf("Failed to provision environment: %v", e.Err)
-			_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+			conn.sendFailureISE()
 			return
 		}
 		s.log.Info(e.Msg)
-		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+		conn.sendTextMsg(e.Msg)
 	}
 
 	env.Status = environment.StatusProvisioned
 	if err := s.state.UpdateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to update env info in state: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
-
-	conn.WriteMessage(websocket.TextMessage, []byte("Successfully created "+env.Name))
-	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+	conn.sendSuccess("Successfully created " + env.Name)
 }
 
 func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
-	envName := mux.Vars(r)["name"]
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := wsManager{wsConn}
 
-	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
-	defer conn.Close()
+	envName := mux.Vars(r)["name"]
 
 	env, err := s.state.Environment(r.Context(), envName)
 	if err != nil {
 		s.log.Errorf("Failed to fetch env: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if env == nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("Environment does not exist"))
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		conn.sendFailure("Environment does not exist", websocket.ClosePolicyViolation)
 		return
 	}
 	if env.Status != environment.StatusProvisioned {
-		conn.WriteMessage(websocket.TextMessage, []byte("Environment is not in provisioned state"))
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		conn.sendFailure("Environment is not in provisioned state", websocket.ClosePolicyViolation)
 		return
 	}
 
@@ -128,15 +135,14 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	hasApps, err := s.state.CheckEnvContainsApps(r.Context(), env.Name)
 	if err != nil {
 		s.log.Errorf("Failed to check if env contains apps: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if hasApps {
-		conn.WriteMessage(
-			websocket.TextMessage,
-			[]byte("Environment cannot be destroyed because it contains applications"),
+		conn.sendFailure(
+			"Environment cannot be destroyed because it contains applications",
+			websocket.ClosePolicyViolation,
 		)
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
 
@@ -145,7 +151,7 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	env.Status = environment.StatusDestroying
 	if err := s.state.UpdateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to update env status: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	env.Infra = s.infra
@@ -156,27 +162,25 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	for e := range eventsCh {
 		if e.Err != nil {
 			s.log.Errorf("Failed to destroy environment: %v", e.Err)
-			conn.WriteMessage(websocket.TextMessage, []byte("Failed to destroy environment"))
-			_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+			conn.sendFailureISE()
 			return
 		}
 		s.log.Info(e.Msg)
-		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+		conn.sendTextMsg(e.Msg)
 	}
 
 	if err := os.RemoveAll(s.envTfDir(env.Name)); err != nil {
 		s.log.Errorf("Failed to delete env TF config file from disk: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if err := s.state.DeleteEnvironment(r.Context(), envName); err != nil {
 		s.log.Errorf("Failed to delete env from state: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 
-	conn.WriteMessage(websocket.TextMessage, []byte("Environment destroyed successfully"))
-	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+	conn.sendSuccess("Environment destroyed successfully")
 }
 
 func (s *server) envTfDir(name string) string {

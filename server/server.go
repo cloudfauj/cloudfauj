@@ -9,6 +9,8 @@ import (
 	"net/http"
 )
 
+const ApiV1Prefix = "/v1"
+
 // Event represent a server event
 type Event struct {
 	Msg string
@@ -23,8 +25,6 @@ type server struct {
 	wsUpgrader *websocket.Upgrader
 	*mux.Router
 }
-
-const ApiV1Prefix = "/v1"
 
 func New(c *Config, l *logrus.Logger, s state.State, i *infrastructure.Infrastructure) http.Handler {
 	srv := &server{
@@ -57,13 +57,6 @@ func setupV1Routes(s *server) {
 	envR := r.PathPrefix("/environment").Subrouter()
 	envR.HandleFunc("/create", s.handlerCreateEnv)
 	envR.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
-}
-
-func sendWSClosureMsg(conn *websocket.Conn, code int) error {
-	return conn.WriteMessage(
-		websocket.CloseMessage,
-		websocket.FormatCloseMessage(code, ""),
-	)
 }
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {
