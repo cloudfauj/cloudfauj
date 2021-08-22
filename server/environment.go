@@ -180,9 +180,9 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) envTfDir(name string) string {
-	return path.Join(s.config.DataDir, TerraformDir, name)
+	return path.Join(s.config.TerraformDir(), name)
 }
 
 func (s *server) envTfFile(name string) string {
-	return path.Join(s.envTfDir(name), TerraformConfFile)
+	return path.Join(s.envTfDir(name), s.config.terraformConfigFile)
 }

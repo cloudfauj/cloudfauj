@@ -65,9 +65,9 @@ func (s *server) handlerListDeployments(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *server) deploymentDir(id string) string {
-	return path.Join(s.config.DataDir, DeploymentsDir, id)
+	return path.Join(s.config.DeploymentsDir(), id)
 }
 
 func (s *server) deploymentLogFile(id string) string {
-	return path.Join(s.deploymentDir(id), LogFileBasename)
+	return path.Join(s.deploymentDir(id), s.config.logfileName)
 }

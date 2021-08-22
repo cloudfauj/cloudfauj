@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/cloudfauj/cloudfauj/server"
 	"github.com/cloudfauj/cloudfauj/state"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/hashicorp/terraform-exec/tfinstall"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -41,31 +41,32 @@ func init() {
 }
 
 func runServerCmd(cmd *cobra.Command, args []string) error {
-	configFile, _ := cmd.Flags().GetString("config")
-	initConfig(configFile)
+	log := logger()
 
-	var srvCfg server.Config
-	if err := viper.Unmarshal(&srvCfg); err != nil {
-		return fmt.Errorf("failed to parse server configuration: %v", err)
+	// setup server configuration
+	srvCfgFile, _ := cmd.Flags().GetString("config")
+	initConfig(srvCfgFile)
+
+	d := viper.GetString("data_dir")
+	if d == "" {
+		log.Warn("Server data directory not specified, using current directory")
+		d, _ = os.Getwd()
 	}
+	srvCfg := server.NewConfig(d)
 
-	log := logrus.New()
-
+	// aws authentication
 	log.Info("Validating AWS credentials")
-	awsCfg, err := config.LoadDefaultConfig(cmd.Context())
+	awsCfg, err := loadAWSConfig(cmd.Context())
 	if err != nil {
-		return fmt.Errorf("failed to setup AWS configuration: %v", err)
-	}
-	if awsCfg.Region == "" {
-		return fmt.Errorf("no AWS region specified")
-	}
-	if _, err := awsCfg.Credentials.Retrieve(cmd.Context()); err != nil {
-		return fmt.Errorf("no AWS credentials supplied, cannot proceed")
+		return err
 	}
 
-	if err := setupDataDir(cmd.Context(), log, srvCfg.DataDir); err != nil {
+	// setup main data directory for server
+	if err := setupDataDir(cmd.Context(), log, srvCfg); err != nil {
 		return fmt.Errorf("failed to setup server data directory: %v", err)
 	}
+
+	// db setup
 	db, err := sql.Open("sqlite3", srvCfg.DBFilePath())
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %v", err)
@@ -83,15 +84,15 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	//  support for which is currently not merged into terraform-exec.
 	//  See https://github.com/hashicorp/terraform-exec/pull/100.
 
-	infra := infrastructure.New(
-		log,
-		ec2.NewFromConfig(awsCfg),
-		ecs.NewFromConfig(awsCfg),
-		awsCfg.Region,
-		path.Join(srvCfg.DataDir, server.TerraformDir),
-		path.Join(srvCfg.DataDir, "terraform"),
-	)
-	apiServer := server.New(&srvCfg, log, storage, infra)
+	infra := &infrastructure.Infrastructure{
+		Log:         log,
+		Region:      awsCfg.Region,
+		Ec2:         ec2.NewFromConfig(awsCfg),
+		Ecs:         ecs.NewFromConfig(awsCfg),
+		TFConfigDir: srvCfg.TerraformDir(),
+		TFBinary:    path.Join(srvCfg.DataDir(), "terraform"),
+	}
+	apiServer := server.New(srvCfg, log, storage, infra)
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")
 
 	log.WithFields(logrus.Fields{"bind_addr": bindAddr}).Info("Starting CloudFauj Server")
@@ -101,11 +102,10 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func setupDataDir(ctx context.Context, log *logrus.Logger, dir string) error {
-	// return if the data dir already exists
-	_, err := os.Stat(dir)
+func setupDataDir(ctx context.Context, log *logrus.Logger, srvCfg *server.Config) error {
+	_, err := os.Stat(srvCfg.DataDir())
 	if err == nil {
-		log.WithField("dir", dir).Debug("Data directory already exists")
+		log.WithField("dir", srvCfg.DataDir()).Info("Found data directory")
 		return nil
 	}
 	if !os.IsNotExist(err) {
@@ -113,34 +113,46 @@ func setupDataDir(ctx context.Context, log *logrus.Logger, dir string) error {
 		return fmt.Errorf("failed to check if data directory already exists: %v", err)
 	}
 
-	log.WithField("dir", dir).Info("Setting up server data directory")
-
-	var subDirs = []string{server.DBDir, server.DeploymentsDir, server.TerraformDir}
+	log.WithField("dir", srvCfg.DataDir()).Info("Setting up server data directory")
+	subDirs := []string{
+		srvCfg.DBDir(), srvCfg.DeploymentsDir(), srvCfg.TerraformDir(),
+	}
 	for _, sd := range subDirs {
-		d := path.Join(dir, sd)
-		if err := os.MkdirAll(d, 0755); err != nil {
-			return fmt.Errorf("failed to create %s: %v", d, err)
+		if err := os.MkdirAll(sd, 0755); err != nil {
+			return fmt.Errorf("failed to create %s: %v", sd, err)
 		}
 	}
-	return setupTerraform(ctx, log, dir)
+	return setupTerraform(ctx, log, srvCfg)
 }
 
-func setupTerraform(ctx context.Context, log *logrus.Logger, dir string) error {
-	tfDir := path.Join(dir, server.TerraformDir)
-
-	log.Info("Downloading Terraform v" + server.TerraformVersion)
-	execPath, err := tfinstall.Find(ctx, tfinstall.ExactVersion(server.TerraformVersion, dir))
+func setupTerraform(ctx context.Context, log *logrus.Logger, srvCfg *server.Config) error {
+	log.WithField("version", srvCfg.TerraformVersion()).Info("Downloading Terraform")
+	_, err := tfinstall.Find(
+		ctx,
+		tfinstall.ExactVersion(srvCfg.TerraformVersion(), srvCfg.DataDir()),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to locate Terraform binary: %s", err)
 	}
-	tf, err := tfexec.NewTerraform(tfDir, execPath)
-	if err != nil {
-		return fmt.Errorf("failed to create new terraform object: %s", err)
-	}
-
-	log.Info("Initializing Terraform")
-	if err := tf.Init(ctx, tfexec.Upgrade(true)); err != nil {
-		return fmt.Errorf("failed to initialize: %s", err)
-	}
 	return nil
+}
+
+func logger() *logrus.Logger {
+	l := logrus.New()
+	l.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+	return l
+}
+
+func loadAWSConfig(ctx context.Context) (aws.Config, error) {
+	c, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return c, fmt.Errorf("failed to setup AWS configuration: %v", err)
+	}
+	if c.Region == "" {
+		return c, fmt.Errorf("no AWS region specified")
+	}
+	if _, err := c.Credentials.Retrieve(ctx); err != nil {
+		return c, fmt.Errorf("no AWS credentials supplied, cannot proceed")
+	}
+	return c, nil
 }

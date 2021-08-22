@@ -33,7 +33,7 @@ output "{{.app}}_ecs_service" {
 }`
 
 func (i *Infrastructure) ECSService(ctx context.Context, service, cluster string) (types.Service, error) {
-	res, err := i.ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
+	res, err := i.Ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
 		Services: []string{service},
 		Cluster:  aws.String(cluster),
 	})

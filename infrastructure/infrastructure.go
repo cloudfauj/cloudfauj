@@ -34,38 +34,23 @@ const tfConfigTpl = `terraform {
 }
 
 provider "aws" {
-  region = "{{.aws_region}}"
+  Region = "{{.aws_region}}"
 }`
 
+// Interacts with AWS to provision and manage infrastructure resources.
 type Infrastructure struct {
-	region       string
-	log          *logrus.Logger
-	ec2          *ec2.Client
-	ecs          *ecs.Client
-	tfConfigDir  string
-	tfBinaryPath string
+	Region      string
+	Log         *logrus.Logger
+	Ec2         *ec2.Client
+	Ecs         *ecs.Client
+	TFConfigDir string
+	TFBinary    string
 }
 
-func New(
-	l *logrus.Logger,
-	ec2 *ec2.Client,
-	ecs *ecs.Client,
-	region, tfDir, tfBin string,
-) *Infrastructure {
-	return &Infrastructure{
-		log:          l,
-		ec2:          ec2,
-		ecs:          ecs,
-		region:       region,
-		tfConfigDir:  tfDir,
-		tfBinaryPath: tfBin,
-	}
-}
-
-// NextAvailableCIDR returns the first /16 CIDR available for use in the target AWS account-region
+// NextAvailableCIDR returns the first /16 CIDR available for use in the target AWS account-Region
 func (i *Infrastructure) NextAvailableCIDR(ctx context.Context) (string, error) {
 	// todo: paginate to ensure we have all VPCs
-	res, err := i.ec2.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{})
+	res, err := i.Ec2.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{})
 	if err != nil {
 		return "", err
 	}
@@ -91,14 +76,14 @@ func (i *Infrastructure) NextAvailableCIDR(ctx context.Context) (string, error) 
 }
 
 func (i *Infrastructure) Tf(workSubDir string) (*tfexec.Terraform, error) {
-	tf, err := tfexec.NewTerraform(path.Join(i.tfConfigDir, workSubDir), i.tfBinaryPath)
+	tf, err := tfexec.NewTerraform(path.Join(i.TFConfigDir, workSubDir), i.TFBinary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new terraform object: %s", err)
 	}
 	// Pass the server process' environment variables to Terraform process
 	tf.SetEnv(nil)
 	// Set logging
-	tf.SetLogger(i.log)
+	tf.SetLogger(i.Log)
 	tf.SetStderr(os.Stderr)
 	tf.SetStdout(os.Stdout)
 
@@ -109,7 +94,7 @@ func (i *Infrastructure) TfConfig() string {
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(tfConfigTpl))
 	data := map[string]interface{}{
-		"aws_region":           i.region,
+		"aws_region":           i.Region,
 		"aws_provider_version": TerraformAwsProviderVersion,
 	}
 	t.Execute(&b, data)
