@@ -225,7 +225,7 @@ func (s *server) provisionInfra(
 
 	e <- &Event{Msg: "provisioning infrastructure for application"}
 
-	tf, err := s.infra.Tf(env.Name)
+	tf, err := s.infra.newTerraform(env.Name)
 	if err != nil {
 		e <- &Event{Err: err}
 		return
@@ -266,7 +266,7 @@ func (s *server) deployApp(
 ) {
 	defer close(e)
 
-	tf, err := s.infra.Tf(env.Name)
+	tf, err := s.infra.newTerraform(env.Name)
 	if err != nil {
 		e <- &Event{Err: err}
 		return
@@ -319,7 +319,7 @@ func (s *server) trackDeployment(ctx context.Context, ecsCluster, ecsService str
 }
 
 func (s *server) destroyInfra(ctx context.Context, env, app string) error {
-	tf, err := s.infra.Tf(env)
+	tf, err := s.infra.newTerraform(env)
 	if err != nil {
 		return err
 	}

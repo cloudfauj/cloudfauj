@@ -85,12 +85,11 @@ func runServerCmd(cmd *cobra.Command, args []string) error {
 	//  See https://github.com/hashicorp/terraform-exec/pull/100.
 
 	infra := &infrastructure.Infrastructure{
-		Log:         log,
-		Region:      awsCfg.Region,
-		Ec2:         ec2.NewFromConfig(awsCfg),
-		Ecs:         ecs.NewFromConfig(awsCfg),
-		TFConfigDir: srvCfg.TerraformDir(),
-		TFBinary:    path.Join(srvCfg.DataDir(), "terraform"),
+		Log:      log,
+		Region:   awsCfg.Region,
+		Ec2:      ec2.NewFromConfig(awsCfg),
+		Ecs:      ecs.NewFromConfig(awsCfg),
+		TFBinary: path.Join(srvCfg.DataDir(), "terraform"),
 	}
 	apiServer := server.New(srvCfg, log, storage, infra)
 	bindAddr := viper.GetString("bind_host") + ":" + viper.GetString("bind_port")

@@ -61,7 +61,6 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	s.log.WithField("name", env.Name).Info("Creating new environment")
 
 	env.Status = environment.StatusProvisioning
-	env.Infra = s.infra
 	if err := s.state.CreateEnvironment(r.Context(), env); err != nil {
 		s.log.Errorf("Failed to store env info in state: %v", err)
 		conn.sendFailureISE()
@@ -82,18 +81,18 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	eventsCh := make(chan environment.Event)
-	go env.Provision(r.Context(), s.envTfDir(env.Name), f, eventsCh)
+	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name))
+	if err != nil {
+		s.log.Error(err)
+		conn.sendFailureISE()
+		return
+	}
 
-	// TODO: revisit the whole channel message passing thing
-	for e := range eventsCh {
-		if e.Err != nil {
-			s.log.Errorf("Failed to provision environment: %v", e.Err)
-			conn.sendFailureISE()
-			return
-		}
-		s.log.Info(e.Msg)
-		conn.sendTextMsg(e.Msg)
+	conn.sendTextMsg("Applying Terraform configuration")
+	if err := s.infra.CreateEnvironment(r.Context(), env, tf, f); err != nil {
+		s.log.Errorf("Failed to provision environment: %v", err)
+		conn.sendFailureISE()
+		return
 	}
 
 	env.Status = environment.StatusProvisioned
@@ -154,21 +153,20 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		conn.sendFailureISE()
 		return
 	}
-	env.Infra = s.infra
 
-	eventsCh := make(chan environment.Event)
-	go env.Destroy(r.Context(), eventsCh)
-
-	for e := range eventsCh {
-		if e.Err != nil {
-			s.log.Errorf("Failed to destroy environment: %v", e.Err)
-			conn.sendFailureISE()
-			return
-		}
-		s.log.Info(e.Msg)
-		conn.sendTextMsg(e.Msg)
+	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name))
+	if err != nil {
+		s.log.Error(err)
+		conn.sendFailureISE()
+		return
 	}
 
+	conn.sendTextMsg("Destroying Terraform infrastructure")
+	if err := s.infra.DestroyEnvironment(r.Context(), tf); err != nil {
+		s.log.Errorf("Failed to destroy environment: %v", err)
+		conn.sendFailureISE()
+		return
+	}
 	if err := os.RemoveAll(s.envTfDir(env.Name)); err != nil {
 		s.log.Errorf("Failed to delete env TF config file from disk: %v", err)
 		conn.sendFailureISE()

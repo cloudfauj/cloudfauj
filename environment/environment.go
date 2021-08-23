@@ -2,7 +2,6 @@ package environment
 
 import (
 	"errors"
-	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"strings"
 )
 
@@ -12,15 +11,10 @@ const (
 	StatusDestroying   = "destroying"
 )
 
+// Environment represents a Cloudfauj environment
 type Environment struct {
 	Name   string `json:"name"`
 	Status string `json:"status"`
-	Infra  *infrastructure.Infrastructure
-}
-
-type Event struct {
-	Msg string
-	Err error
 }
 
 func (e *Environment) CheckIsValid() error {
