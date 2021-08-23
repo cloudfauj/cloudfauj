@@ -21,38 +21,43 @@ import (
 )
 
 func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
-	conn, _ := s.wsUpgrader.Upgrade(w, r, nil)
-	defer conn.Close()
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := wsManager{wsConn}
 
 	var spec deployment.Spec
 	if err := conn.ReadJSON(&spec); err != nil {
 		s.log.Errorf("Failed to read deployment spec: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if err := spec.CheckIsValid(); err != nil {
-		conn.WriteMessage(
-			websocket.TextMessage,
-			[]byte(fmt.Sprintf("Invalid specification: %v", err)),
+		conn.sendFailure(
+			fmt.Sprintf("Invalid specification: %v", err),
+			websocket.ClosePolicyViolation,
 		)
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
 		return
 	}
 
 	e, err := s.state.Environment(r.Context(), spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.TargetEnv).Errorf("Failed to check if target env exists: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if e == nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("Target environment does not exist"))
-		_ = sendWSClosureMsg(conn, websocket.ClosePolicyViolation)
+		conn.sendFailure("Target environment does not exist", websocket.ClosePolicyViolation)
 		return
 	}
 	if e.Status != environment.StatusProvisioned {
-		conn.WriteMessage(websocket.TextMessage, []byte("Target environment is not ready to be deployed to"))
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailure(
+			"Target environment is not ready to be deployed to",
+			websocket.CloseInternalServerErr,
+		)
 		return
 	}
 
@@ -60,22 +65,19 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	app, err := s.state.App(r.Context(), spec.App.Name, spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.App.Name).Errorf("Failed to get app from state: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	if app == nil {
 		s.log.WithFields(
 			logrus.Fields{"name": spec.App.Name, "env": spec.TargetEnv},
 		).Info("Creating new application")
-		conn.WriteMessage(
-			websocket.TextMessage,
-			[]byte("Creating application in this environment for the first time"),
-		)
 
-		// register app in state
+		conn.sendTextMsg("Creating application in this environment for the first time")
+
 		if err := s.state.CreateApp(r.Context(), spec.App, spec.TargetEnv); err != nil {
 			s.log.Errorf("Failed to create app in state: %v", err)
-			_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+			conn.sendFailureISE()
 			return
 		}
 
@@ -85,15 +87,16 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 		for e := range eventsCh {
 			if e.Err != nil {
-				m := []byte(fmt.Sprintf("Creation failed: %v", e.Err))
-				conn.WriteMessage(websocket.TextMessage, m)
+				conn.sendFailure(
+					fmt.Sprintf("Creation failed: %v", e.Err),
+					websocket.CloseInternalServerErr,
+				)
 				return
 			}
-			conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+			conn.sendTextMsg(e.Msg)
 		}
 
-		conn.WriteMessage(websocket.TextMessage, []byte("App created & deployed successfully"))
-		_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+		conn.sendSuccess("App created & deployed successfully")
 		return
 	}
 
@@ -105,15 +108,20 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	id, err := s.state.CreateDeployment(r.Context(), d)
 	if err != nil {
 		s.log.WithField("app", spec.App.Name).Errorf("Failed to create deployment: %v", err)
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 	d.Id = strconv.FormatInt(id, 10)
 
 	// open deployment log file
-	os.Mkdir(s.deploymentDir(d.Id), 0755)
+	if err := os.Mkdir(s.deploymentDir(d.Id), 0755); err != nil {
+		s.log.WithField("deployment_id", d.Id).Errorf("Failed to create deployment dir: %v", err)
+		conn.sendFailureISE()
+		return
+	}
 	dlf, err := os.OpenFile(s.deploymentLogFile(d.Id), os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
+		// no need to exit, deployment logs can be written to default logger output
 		s.log.Errorf("Failed to open deployment log file: %v", err)
 	} else {
 		defer dlf.Close()
@@ -121,7 +129,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := "Deployment ID: " + d.Id
-	conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	conn.sendTextMsg(msg)
 	d.Log(msg)
 	s.log.
 		WithFields(logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id}).
@@ -130,7 +138,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	if err := s.state.UpdateApp(r.Context(), spec.App, spec.TargetEnv); err != nil {
 		s.log.Errorf("Failed to update app in state: %v", err)
 		d.Fail(errors.New("a server error occurred while updating app state"))
-		_ = sendWSClosureMsg(conn, websocket.CloseInternalServerErr)
+		conn.sendFailureISE()
 		return
 	}
 
@@ -142,21 +150,19 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		if e.Err != nil {
 			d.Fail(e.Err)
 			s.state.UpdateDeploymentStatus(r.Context(), d.Id, d.Status)
-
-			m := []byte(fmt.Sprintf("Deployment failed: %v", e.Err))
-			conn.WriteMessage(websocket.TextMessage, m)
-
+			conn.sendFailure(
+				fmt.Sprintf("Deployment failed: %v", e.Err),
+				websocket.CloseInternalServerErr,
+			)
 			return
 		}
 		d.Log(e.Msg)
-		conn.WriteMessage(websocket.TextMessage, []byte(e.Msg))
+		conn.sendTextMsg(e.Msg)
 	}
 
 	d.Succeed()
 	s.state.UpdateDeploymentStatus(r.Context(), d.Id, d.Status)
-
-	conn.WriteMessage(websocket.TextMessage, []byte("Deployed successfully"))
-	_ = sendWSClosureMsg(conn, websocket.CloseNormalClosure)
+	conn.sendSuccess("Deployed successfully")
 }
 
 func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
