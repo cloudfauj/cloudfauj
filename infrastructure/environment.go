@@ -30,7 +30,7 @@ func (i *Infrastructure) CreateEnvironment(
 	tf *tfexec.Terraform,
 	tfFile *os.File,
 ) error {
-	cidr, err := i.NextAvailableCIDR(ctx)
+	cidr, err := i.nextAvailableCIDR(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to compute VPC CIDR: %v", err)
 	}
@@ -56,6 +56,16 @@ func (i *Infrastructure) DestroyEnvironment(ctx context.Context, tf *tfexec.Terr
 		return fmt.Errorf("failed to destroy: %v", err)
 	}
 	return nil
+}
+
+func (i *Infrastructure) EnvECSCluster(ctx context.Context, tf *tfexec.Terraform) (string, error) {
+	res, err := tf.Output(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to read terraform output: %v", err)
+	}
+	cluster := string(res["ecs_cluster_arn"].Value)
+	cluster = strings.Trim(cluster, "\"")
+	return cluster, nil
 }
 
 func (i *Infrastructure) envTfConfig(env, vpcCidr string) string {

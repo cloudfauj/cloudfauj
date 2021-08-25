@@ -2,11 +2,10 @@ package infrastructure
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ecs"
-	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"fmt"
 	"github.com/cloudfauj/cloudfauj/deployment"
-	"strconv"
+	"github.com/hashicorp/terraform-exec/tfexec"
+	"os"
 	"strings"
 	"text/template"
 )
@@ -32,39 +31,58 @@ output "{{.app}}_ecs_service" {
   value = module.{{.app}}.ecs_service
 }`
 
-func (i *Infrastructure) ECSService(ctx context.Context, service, cluster string) (types.Service, error) {
-	res, err := i.Ecs.DescribeServices(ctx, &ecs.DescribeServicesInput{
-		Services: []string{service},
-		Cluster:  aws.String(cluster),
-	})
-	if err != nil {
-		return types.Service{}, err
+func (i *Infrastructure) CreateApplication(
+	ctx context.Context,
+	spec *deployment.Spec,
+	tf *tfexec.Terraform,
+	tfFile *os.File,
+) error {
+	appConfig := i.appTfConfig(spec)
+	if _, err := tfFile.Write([]byte(appConfig)); err != nil {
+		return fmt.Errorf("failed to write Terraform configuration to app file: %v", err)
 	}
-	return res.Services[0], nil
+	if err := tf.Init(ctx); err != nil {
+		return fmt.Errorf("failed to initialize terraform: %v", err)
+	}
+	if err := tf.Apply(ctx, tfexec.Target("module."+spec.App.Name)); err != nil {
+		return fmt.Errorf("failed to apply terraform changes: %v", err)
+	}
+	return nil
 }
 
-func (i *Infrastructure) ECSServiceStatus(ctx context.Context, service, cluster string) (string, error) {
-	s, err := i.ECSService(ctx, service, cluster)
-	if err != nil {
-		return "", err
-	}
-	return aws.ToString(s.Status), nil
+// ModifyApplication is simply a wrapper around CreateApplication because both
+// involve writing & applying TF configurations.
+func (i *Infrastructure) ModifyApplication(
+	ctx context.Context,
+	spec *deployment.Spec,
+	tf *tfexec.Terraform,
+	tfFile *os.File,
+) error {
+	return i.CreateApplication(ctx, spec, tf, tfFile)
 }
 
-func (i *Infrastructure) ECSServicePrimaryDeployment(ctx context.Context, service, cluster string) (types.Deployment, error) {
-	s, err := i.ECSService(ctx, service, cluster)
-	if err != nil {
-		return types.Deployment{}, err
+func (i *Infrastructure) DestroyApplication(ctx context.Context, tf *tfexec.Terraform, app string) error {
+	if err := tf.Destroy(ctx, tfexec.Target("module."+app)); err != nil {
+		return fmt.Errorf("failed to destroy terraform infrastructure: %v", err)
 	}
-	// todo: ensure that the first item in Deployments list is always the PRIMARY deployment
-	return s.Deployments[0], nil
+	return nil
 }
 
-func (i *Infrastructure) AppTfConfig(env string, spec *deployment.Spec) string {
+func (i *Infrastructure) AppECSService(ctx context.Context, tf *tfexec.Terraform, app string) (string, error) {
+	res, err := tf.Output(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to read terraform output: %v", err)
+	}
+	service := string(res[app+"_ecs_service"].Value)
+	service = strings.Trim(service, "\"")
+	return service, nil
+}
+
+func (i *Infrastructure) appTfConfig(spec *deployment.Spec) string {
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(appTfConfig))
 	data := map[string]interface{}{
-		"env":          env,
+		"env":          spec.TargetEnv,
 		"app":          spec.App.Name,
 		"source":       appTfModule,
 		"ingress_port": spec.App.Resources.Network.BindPort,
@@ -74,51 +92,4 @@ func (i *Infrastructure) AppTfConfig(env string, spec *deployment.Spec) string {
 	}
 	t.Execute(&b, data)
 	return b.String()
-}
-
-// memRange returns discrete memory values (MB) from start to end
-// at increments of 1024.
-func memRange(start, end int) []int {
-	var res []int
-	inc := 1024
-	for i := start; i <= end; i += inc {
-		res = append(res, i)
-	}
-	return res
-}
-
-// fargateRoundedCPU returns the amount of CPU compatible with fargate.
-// It is at least as much as the user-specified CPU.
-func fargateRoundedCPU(cpu int) string {
-	rng := []int{0, 256, 512, 1024, 2048, 4096}
-	for i := 0; i < len(rng)-1; i++ {
-		if cpu > rng[i] && cpu <= rng[i+1] {
-			return strconv.Itoa(rng[i+1])
-		}
-	}
-	// todo: return err if cpu > max rng in fargate
-	return strconv.Itoa(rng[len(rng)-1])
-}
-
-// fargateRoundedMemory returns the amount of Memory compatible with fargate.
-// It is at least as much as the user-specified memory.
-func fargateRoundedMemory(cpu, memory int) string {
-	ranges := map[string][]int{
-		"256":  {512, 1024, 2048},
-		"512":  memRange(1024, 4096),
-		"1024": memRange(2048, 8192),
-		"2048": memRange(4096, 16384),
-		"4096": memRange(9216, 30720),
-	}
-	rng := ranges[fargateRoundedCPU(cpu)]
-	if memory <= rng[0] {
-		return strconv.Itoa(rng[0])
-	}
-	for i := 0; i < len(rng)-1; i++ {
-		if memory <= rng[i+1] {
-			return strconv.Itoa(rng[i+1])
-		}
-	}
-	// todo: return err if memory > max rng in fargate
-	return strconv.Itoa(rng[len(rng)-1])
 }
