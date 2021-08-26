@@ -19,7 +19,7 @@ const tfCoreConfigTpl = `terraform {
 }
 
 provider "aws" {
-  Region = "{{.aws_region}}"
+  region = "{{.aws_region}}"
 }`
 
 func (i *Infrastructure) NewTerraform(workDir string) (*tfexec.Terraform, error) {
