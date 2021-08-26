@@ -48,7 +48,7 @@ func runEnvCreateCmd(cmd *cobra.Command, args []string) error {
 		if e.Err != nil {
 			return e.Err
 		}
-		fmt.Println(e.Message)
+		fmt.Println(e.Msg)
 	}
 	return nil
 }

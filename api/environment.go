@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/environment"
+	"github.com/cloudfauj/cloudfauj/server"
 	"net/http"
 )
 
-func (a *API) CreateEnvironment(env *environment.Environment) (<-chan *ServerEvent, error) {
+func (a *API) CreateEnvironment(env *environment.Environment) (<-chan *server.Event, error) {
 	m, _ := json.Marshal(env)
 	return a.makeWebsocketRequest(a.constructWsURL("/environment/create"), m)
 }
 
-func (a *API) DestroyEnvironment(name string) (<-chan *ServerEvent, error) {
+func (a *API) DestroyEnvironment(name string) (<-chan *server.Event, error) {
 	return a.makeWebsocketRequest(a.constructWsURL("/environment/"+name+"/destroy"), nil)
 }
 

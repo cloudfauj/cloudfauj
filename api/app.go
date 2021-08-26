@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/deployment"
+	"github.com/cloudfauj/cloudfauj/server"
 	"net/http"
 )
 
 // Deploy requests the server to deploy an application.
 // It streams all the deployment logs.
-func (a *API) Deploy(spec *deployment.Spec) (<-chan *ServerEvent, error) {
+func (a *API) Deploy(spec *deployment.Spec) (<-chan *server.Event, error) {
 	m, _ := json.Marshal(spec)
 	return a.makeWebsocketRequest(a.constructWsURL("/app/deploy"), m)
 }

@@ -34,15 +34,15 @@ func (a *API) constructURL(s, p string, q qp) string {
 
 // makeWebsocketRequest creates a websocket connection to the server,
 // sends an optional payload first, then streams all messages received from it.
-func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *ServerEvent, error) {
-	eventsCh := make(chan *ServerEvent)
+func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *server.Event, error) {
+	eventsCh := make(chan *server.Event)
 
 	conn, _, err := a.WsDialer.Dial(u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish websocket connection with server: %v", err)
 	}
 
-	go func(conn *websocket.Conn, respCh chan<- *ServerEvent) {
+	go func(conn *websocket.Conn, respCh chan<- *server.Event) {
 		defer conn.Close()
 		defer close(respCh)
 
@@ -52,11 +52,11 @@ func (a *API) makeWebsocketRequest(u string, message []byte) (<-chan *ServerEven
 				// unless an error has occurred due to normal connection closure
 				// from server, it needs to propagate.
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					respCh <- &ServerEvent{Err: err}
+					respCh <- &server.Event{Err: err}
 				}
 				break
 			}
-			respCh <- &ServerEvent{Message: string(msg)}
+			respCh <- &server.Event{Msg: string(msg)}
 		}
 	}(conn, eventsCh)
 
