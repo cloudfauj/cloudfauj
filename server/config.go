@@ -25,6 +25,10 @@ type Config struct {
 	// Directory inside base containing all terraform configurations
 	terraformDir string
 
+	// Directory inside terraform dir containing terraform configurations
+	// for domains.
+	terraformDomainsDir string
+
 	// Name of the main Terraform config file.
 	// The value of this is always "terraform.tf".
 	terraformConfigFile string
@@ -42,6 +46,7 @@ func NewConfig(dataDir string) *Config {
 		dbDir:               "db",
 		dbFilename:          "server.db",
 		terraformDir:        "infrastructure",
+		terraformDomainsDir: "_domains",
 		terraformConfigFile: "terraform.tf",
 		terraformVersion:    "1.0.5",
 	}
@@ -71,6 +76,13 @@ func (c *Config) DeploymentsDir() string {
 // all terraform infrastructure configurations.
 func (c *Config) TerraformDir() string {
 	return path.Join(c.DataDir(), c.terraformDir)
+}
+
+// TerraformDomainsDir returns the exact path of directory containing
+// all terraform infrastructure configurations for domains.
+// This is a subdir of TerraformDir.
+func (c *Config) TerraformDomainsDir() string {
+	return path.Join(c.TerraformDir(), c.terraformDomainsDir)
 }
 
 // TerraformVersion returns the version of terraform the server

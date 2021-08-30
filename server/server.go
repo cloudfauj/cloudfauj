@@ -57,6 +57,10 @@ func setupV1Routes(s *server) {
 	envR := r.PathPrefix("/environment").Subrouter()
 	envR.HandleFunc("/create", s.handlerCreateEnv)
 	envR.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
+
+	domainR := r.PathPrefix("/domain").Subrouter()
+	domainR.HandleFunc("/{name}/add", s.handlerAddDomain)
+	domainR.HandleFunc("/{name}/delete", s.handlerDeleteDomain)
 }
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {

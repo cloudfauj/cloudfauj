@@ -18,6 +18,8 @@ type Environment struct {
 }
 
 func (e *Environment) CheckIsValid() error {
+	// TODO: Ensure env name doesn't use any of the reserved names
+	//  (eg: any that start with _)
 	if len(strings.TrimSpace(e.Name)) == 0 {
 		return errors.New("name cannot be empty")
 	}
