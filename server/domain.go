@@ -71,7 +71,59 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	conn.sendTextMsg(fmt.Sprintf("NS Records: %v", nsRecords))
 }
 
-func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {}
+func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := wsManager{wsConn}
+
+	name := mux.Vars(r)["name"]
+	exists, err := s.state.CheckDomainExists(r.Context(), name)
+	if err != nil {
+		s.log.WithField("name", name).Errorf("Failed to check if domain exists: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	if !exists {
+		conn.sendSuccess("Domain doesn't exist, nothing to do")
+		return
+	}
+
+	// TODO: Before proceeding with destruction, do we want to check if
+	//  the infra is being relied on? eg- is the ACM cert being used by
+	//  any load balancer?
+
+	conn.sendTextMsg("Destroying Terraform infrastructure")
+
+	tf, err := s.infra.NewTerraform(s.domainTFDir(name))
+	if err != nil {
+		s.log.Error(err)
+		conn.sendFailureISE()
+		return
+	}
+	if err := s.infra.DeleteDomain(r.Context(), tf); err != nil {
+		s.log.Errorf("Failed to destroy domain infrastructure: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	if err := os.RemoveAll(s.domainTFDir(name)); err != nil {
+		s.log.Errorf("Failed to delete domain TF config from disk: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
+	conn.sendTextMsg(fmt.Sprintf("De-registering %s from state", name))
+	if err := s.state.DeleteDomain(r.Context(), name); err != nil {
+		s.log.WithField("name", name).Errorf("Failed to delete domain from state: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
+	conn.sendSuccess("Domain deleted successfully")
+}
 
 func (s *server) domainTFDir(name string) string {
 	return path.Join(s.config.TerraformDomainsDir(), name)
