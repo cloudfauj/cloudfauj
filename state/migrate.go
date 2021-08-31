@@ -15,5 +15,8 @@ func (s *state) Migrate(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, sqlCreateDeploymentTable); err != nil {
 		return fmt.Errorf("failed to create deployments table: %v", err)
 	}
+	if _, err := s.db.ExecContext(ctx, sqlCreateDomainTable); err != nil {
+		return fmt.Errorf("failed to create domains table: %v", err)
+	}
 	return nil
 }

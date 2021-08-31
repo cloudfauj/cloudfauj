@@ -33,6 +33,10 @@ type State interface {
 	UpdateApp(context.Context, *application.Application, string) error
 	App(context.Context, string, string) (*application.Application, error)
 	DeleteApp(context.Context, string, string) error
+
+	AddDomain(context.Context, string) error
+	CheckDomainExists(context.Context, string) (bool, error)
+	DeleteDomain(context.Context, string) error
 }
 
 type state struct {
