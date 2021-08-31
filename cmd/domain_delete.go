@@ -7,7 +7,7 @@ import (
 )
 
 var domainDeleteCmd = &cobra.Command{
-	Use:   "delete DOMAIN",
+	Use:   "delete [flags] DOMAIN",
 	Short: "De-register a domain from Cloudfauj",
 	Long: `
     This command lets you delete a domain previously added to Cloudfauj.

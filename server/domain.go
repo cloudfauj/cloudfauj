@@ -60,15 +60,18 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.sendTextMsg("Applying Terraform configuration")
-	nsRecords, err := s.infra.AddDomain(r.Context(), name, tf, f)
+	nsRecords, err := s.infra.CreateDomain(r.Context(), name, tf, f)
 	if err != nil {
 		s.log.Errorf("Failed to provision domain infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	conn.sendTextMsg("Domain added successfully")
-	conn.sendTextMsg(fmt.Sprintf("NS Records: %v", nsRecords))
+	conn.sendTextMsg("NS Records to be configured for " + name)
+	for _, r := range nsRecords {
+		conn.sendTextMsg(r)
+	}
+	conn.sendSuccess("Domain infrastructure created successfully")
 }
 
 func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {

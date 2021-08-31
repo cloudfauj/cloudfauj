@@ -7,7 +7,7 @@ import (
 )
 
 var domainAddCmd = &cobra.Command{
-	Use:   "add DOMAIN",
+	Use:   "add [flags] DOMAIN",
 	Short: "Register a domain with Cloudfauj",
 	Long: `
     This command lets you add a domain to Cloudfauj.
