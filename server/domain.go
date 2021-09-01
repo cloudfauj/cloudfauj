@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -126,6 +127,19 @@ func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.sendSuccess("Domain deleted successfully")
+}
+
+func (s *server) handlerListDomains(w http.ResponseWriter, r *http.Request) {
+	res, err := s.state.ListDomains(r.Context())
+	if err != nil {
+		s.log.Errorf("Failed to list domains from state: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonRes, _ := json.Marshal(res)
+	_, _ = w.Write(jsonRes)
 }
 
 func (s *server) domainTFDir(name string) string {

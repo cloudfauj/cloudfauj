@@ -30,7 +30,7 @@ func init() {
 	appCmd.AddCommand(appDestroyCmd)
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
 	deploymentCmd.AddCommand(deploymentInfoCmd, deploymentLogsCmd, deploymentListCmd)
-	domainCmd.AddCommand(domainAddCmd, domainDeleteCmd)
+	domainCmd.AddCommand(domainAddCmd, domainDeleteCmd, domainListCmd)
 
 	rootCmd.PersistentFlags().StringVar(
 		&serverAddr,

@@ -37,6 +37,7 @@ type State interface {
 	AddDomain(context.Context, string) error
 	CheckDomainExists(context.Context, string) (bool, error)
 	DeleteDomain(context.Context, string) error
+	ListDomains(context.Context) ([]string, error)
 }
 
 type state struct {

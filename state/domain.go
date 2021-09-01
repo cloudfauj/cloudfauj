@@ -33,3 +33,26 @@ func (s *state) DeleteDomain(ctx context.Context, name string) error {
 	_, err := s.db.ExecContext(ctx, "DELETE FROM domains WHERE name = ?", name)
 	return err
 }
+
+func (s *state) ListDomains(ctx context.Context) ([]string, error) {
+	var res []string
+
+	rows, err := s.db.QueryContext(ctx, "SELECT name FROM domains")
+	if err != nil {
+		return res, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return res, err
+		}
+		res = append(res, name)
+	}
+	if err = rows.Err(); err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
