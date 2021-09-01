@@ -10,7 +10,7 @@ import (
 	"text/template"
 )
 
-const appTfModule = "github.com/cloudfauj/terraform-template.git//app?ref=90fceb4"
+const appTfModule = "github.com/cloudfauj/terraform-template.git//app?ref=0dcbb03"
 
 const appTfConfig = `module "{{.app}}" {
   source                      = "{{.source}}"

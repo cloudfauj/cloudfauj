@@ -58,6 +58,19 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if env.DomainEnabled() {
+		exists, err := s.state.CheckDomainExists(r.Context(), env.Domain)
+		if err != nil {
+			s.log.Errorf("Failed to check if domain to use for env exists: %v", err)
+			conn.sendFailureISE()
+			return
+		}
+		if !exists {
+			conn.sendFailure("Specified domain does not exist in the system", websocket.ClosePolicyViolation)
+			return
+		}
+	}
+
 	s.log.WithField("name", env.Name).Info("Creating new environment")
 
 	env.Status = environment.StatusProvisioning
@@ -89,7 +102,9 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.sendTextMsg("Applying Terraform configuration")
-	if err := s.infra.CreateEnvironment(r.Context(), env, tf, f); err != nil {
+	// TODO: Is there a more idomatic way than to supply domain tf state file?
+	err = s.infra.CreateEnvironment(r.Context(), env, s.domainTFStateFile(env.Domain), tf, f)
+	if err != nil {
 		s.log.Errorf("Failed to provision environment: %v", err)
 		conn.sendFailureISE()
 		return

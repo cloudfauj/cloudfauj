@@ -66,16 +66,19 @@ func (i *Infrastructure) DeleteDomain(ctx context.Context, tf *tfexec.Terraform)
 
 func (i *Infrastructure) domainTFConfig(name string) string {
 	var b strings.Builder
-	module := strings.ReplaceAll(name, ".", "_")
 
 	t := template.Must(template.New("").Parse(domainTfConfigTpl))
 	data := map[string]interface{}{
 		"tf_core_config": i.tfCoreConfig(),
-		"module_name":    module,
+		"module_name":    domainModuleName(name),
 		"module_source":  domainModuleSource,
 		"domain_name":    name,
 	}
 
 	t.Execute(&b, data)
 	return b.String()
+}
+
+func domainModuleName(name string) string {
+	return strings.ReplaceAll(name, ".", "_")
 }

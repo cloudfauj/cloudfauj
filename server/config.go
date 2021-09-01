@@ -33,6 +33,10 @@ type Config struct {
 	// The value of this is always "terraform.tf".
 	terraformConfigFile string
 
+	// Name of the Terraform state file.
+	// The value of this is always "terraform.tfstate".
+	terraformStateFile string
+
 	// The terraform version the server works with
 	terraformVersion string
 }
@@ -48,6 +52,7 @@ func NewConfig(dataDir string) *Config {
 		terraformDir:        "infrastructure",
 		terraformDomainsDir: "_domains",
 		terraformConfigFile: "terraform.tf",
+		terraformStateFile:  "terraform.tfstate",
 		terraformVersion:    "1.0.5",
 	}
 }

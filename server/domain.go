@@ -149,3 +149,7 @@ func (s *server) domainTFDir(name string) string {
 func (s *server) domainTFFile(name string) string {
 	return path.Join(s.domainTFDir(name), s.config.terraformConfigFile)
 }
+
+func (s *server) domainTFStateFile(name string) string {
+	return path.Join(s.domainTFDir(name), s.config.terraformStateFile)
+}
