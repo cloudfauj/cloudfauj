@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
+	"github.com/cloudfauj/cloudfauj/infrastructure"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -60,7 +61,16 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tf, err := s.infra.NewTerraform(s.envTfDir(e.Name))
+	// create app dir inside env dir if it doesn't already exist
+	appDir := s.appTfDir(spec.TargetEnv, spec.App.Name)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		s.log.Errorf("Failed to create directory for app: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
+	// create terraform object to run inside app directory
+	tf, err := s.infra.NewTerraform(appDir)
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
@@ -75,7 +85,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if app == nil {
-		s.createNewApp(r.Context(), conn, &spec, tf)
+		s.createNewApp(r.Context(), conn, &spec, e, tf)
 		return
 	}
 
@@ -83,13 +93,26 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	s.deployApp(r.Context(), conn, &spec, tf)
 }
 
-func (s *server) createNewApp(ctx context.Context, conn *wsManager, spec *deployment.Spec, tf *tfexec.Terraform) {
+func (s *server) createNewApp(
+	ctx context.Context,
+	conn *wsManager,
+	spec *deployment.Spec,
+	env *environment.Environment,
+	tf *tfexec.Terraform,
+) {
 	s.log.WithFields(
 		logrus.Fields{"name": spec.App.Name, "env": spec.TargetEnv},
 	).Info("Creating new application")
 
 	conn.sendTextMsg("Creating application in this environment for the first time")
-	// provision infrastructure for app
+
+	// register new app in state
+	if err := s.state.CreateApp(ctx, spec.App, spec.TargetEnv); err != nil {
+		s.log.Errorf("Failed to create app in state: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
 	f, err := os.OpenFile(s.appTfFile(spec.TargetEnv, spec.App.Name), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		s.log.Errorf("Failed to create Terraform config file for app: %v", err)
@@ -97,19 +120,23 @@ func (s *server) createNewApp(ctx context.Context, conn *wsManager, spec *deploy
 		return
 	}
 	defer f.Close()
-	if err := s.state.CreateApp(ctx, spec.App, spec.TargetEnv); err != nil {
-		s.log.Errorf("Failed to create app in state: %v", err)
-		conn.sendFailureISE()
-		return
+
+	i := &infrastructure.CreateApplicationInput{
+		Spec:              spec,
+		Env:               env,
+		Tf:                tf,
+		TfFile:            f,
+		DomainTFStateFile: s.domainTFStateFile(env.Domain),
+		EnvTFStateFile:    s.envTfStateFile(env.Name),
 	}
-	if err := s.infra.CreateApplication(ctx, spec, tf, f); err != nil {
+	if err := s.infra.CreateApplication(ctx, i); err != nil {
 		s.log.Errorf("Failed to provision application infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	cluster, _ := s.infra.EnvECSCluster(ctx, tf)
-	service, _ := s.infra.AppECSService(ctx, tf, spec.App.Name)
+	cluster, _ := s.infra.AppECSCluster(ctx, tf)
+	service, _ := s.infra.AppECSService(ctx, tf)
 	eventsCh := make(chan *Event)
 
 	go s.trackDeployment(ctx, cluster, service, eventsCh)
@@ -168,22 +195,14 @@ func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deploymen
 		conn.sendFailureISE()
 		return
 	}
-
-	f, err := os.OpenFile(s.appTfFile(spec.TargetEnv, spec.App.Name), os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		s.log.Errorf("Failed to open Terraform config file for app: %v", err)
-		conn.sendFailureISE()
-		return
-	}
-	defer f.Close()
-	if err := s.infra.ModifyApplication(ctx, spec, tf, f); err != nil {
+	if err := s.infra.ModifyApplication(ctx, spec, tf); err != nil {
 		s.log.Errorf("Failed to modify application infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	cluster, _ := s.infra.EnvECSCluster(ctx, tf)
-	service, _ := s.infra.AppECSService(ctx, tf, spec.App.Name)
+	cluster, _ := s.infra.AppECSCluster(ctx, tf)
+	service, _ := s.infra.AppECSService(ctx, tf)
 	eventsCh := make(chan *Event)
 
 	go s.trackDeployment(ctx, cluster, service, eventsCh)
@@ -236,24 +255,26 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tf, err := s.infra.NewTerraform(s.envTfDir(env))
+	appDir := s.appTfDir(env, app)
+
+	tf, err := s.infra.NewTerraform(appDir)
 	if err != nil {
 		s.log.Errorf("Failed to create terraform object: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := s.infra.DestroyApplication(r.Context(), tf, app); err != nil {
+	if err := s.infra.DestroyApplication(r.Context(), tf); err != nil {
 		s.log.Errorf("Failed to destroy app infra: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if err := os.RemoveAll(appDir); err != nil {
+		s.log.Errorf("Failed to delete app TF config from disk: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	if err := s.state.DeleteApp(r.Context(), app, env); err != nil {
 		s.log.Errorf("Failed to delete app from state: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if err := os.Remove(s.appTfFile(env, app)); err != nil {
-		s.log.Errorf("Failed to delete app TF config file from disk: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -287,6 +308,10 @@ func (s *server) trackDeployment(ctx context.Context, ecsCluster, ecsService str
 	e <- &Event{Err: errors.New("deployment polling timeout reached")}
 }
 
+func (s *server) appTfDir(env, app string) string {
+	return path.Join(s.envTfDir(env), app)
+}
+
 func (s *server) appTfFile(env, app string) string {
-	return path.Join(s.envTfDir(env), app+".tf")
+	return path.Join(s.appTfDir(env, app), s.config.terraformConfigFile)
 }

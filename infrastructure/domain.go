@@ -10,12 +10,10 @@ import (
 	"text/template"
 )
 
-const domainModuleSource = "github.com/cloudfauj/terraform-template.git//domain?ref=1b2921c"
-
 const domainTfConfigTpl = `{{.tf_core_config}}
 
 module "{{.module_name}}" {
-  source = "{{.module_source}}"
+  source = "github.com/cloudfauj/terraform-template.git//domain?ref=f32a060"
   name   = "{{.domain_name}}"
 }
 
@@ -29,6 +27,10 @@ output "zone_id" {
 
 output "ssl_cert_arn" {
   value = module.{{.module_name}}.ssl_cert_arn
+}
+
+output "apex_domain" {
+  value = module.{{.module_name}}.apex_domain
 }`
 
 // CreateDomain creates infrastructure to manage a domain.
@@ -71,7 +73,6 @@ func (i *Infrastructure) domainTFConfig(name string) string {
 	data := map[string]interface{}{
 		"tf_core_config": i.tfCoreConfig(),
 		"module_name":    domainModuleName(name),
-		"module_source":  domainModuleSource,
 		"domain_name":    name,
 	}
 

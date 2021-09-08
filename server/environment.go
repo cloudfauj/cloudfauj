@@ -203,3 +203,7 @@ func (s *server) envTfDir(name string) string {
 func (s *server) envTfFile(name string) string {
 	return path.Join(s.envTfDir(name), s.config.terraformConfigFile)
 }
+
+func (s *server) envTfStateFile(name string) string {
+	return path.Join(s.envTfDir(name), s.config.terraformStateFile)
+}

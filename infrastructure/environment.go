@@ -12,14 +12,30 @@ import (
 
 const envTfConfigTpl = `{{.tf_core_config}}
 
-module "{{.env_name}}" {
+module "main_env" {
   source              = "github.com/cloudfauj/terraform-template.git//env?ref=0dcbb03"
   env_name            = "{{.env_name}}"
   main_vpc_cidr_block = "{{.main_vpc_cidr}}"
 }
 
 output "ecs_cluster_arn" {
-  value = module.{{.env_name}}.compute_ecs_cluster_arn
+  value = module.main_env.compute_ecs_cluster_arn
+}
+
+output "main_vpc_id" {
+  value = module.main_env.main_vpc_id
+}
+
+output "compute_subnets" {
+  value = module.main_env.compute_subnets
+}
+
+output "ecs_task_execution_role_arn" {
+  value = module.main_env.ecs_task_execution_role_arn
+}
+
+output "name" {
+  value = module.main_env.name
 }
 
 {{.alb_module}}`
@@ -34,10 +50,18 @@ const envAlbTfConfigTpl = `data "terraform_remote_state" "domain" {
 
 module "apps_load_balancer" {
   source              = "github.com/cloudfauj/terraform-template.git//env/load_balancer?ref=0dcbb03"
-  env_name            = "{{.env_name}}"
-  vpc_id              = module.{{.env_name}}.main_vpc_id
+  env_name            = module.main_env.name
+  vpc_id              = module.main_env.main_vpc_id
   acm_certificate_arn = data.terraform_remote_state.domain.outputs.ssl_cert_arn
-  alb_subnets         = module.{{.env_name}}.alb_subnets
+  alb_subnets         = module.main_env.alb_subnets
+}
+
+output "apps_alb_name" {
+  value = module.apps_load_balancer.apps_alb_name
+}
+
+output "main_alb_https_listener" {
+  value = module.apps_load_balancer.main_alb_https_listener
 }`
 
 func (i *Infrastructure) CreateEnvironment(
@@ -75,16 +99,6 @@ func (i *Infrastructure) DestroyEnvironment(ctx context.Context, tf *tfexec.Terr
 	return nil
 }
 
-func (i *Infrastructure) EnvECSCluster(ctx context.Context, tf *tfexec.Terraform) (string, error) {
-	res, err := tf.Output(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to read terraform output: %v", err)
-	}
-	cluster := string(res["ecs_cluster_arn"].Value)
-	cluster = strings.Trim(cluster, "\"")
-	return cluster, nil
-}
-
 func (i *Infrastructure) envTfConfig(env *environment.Environment, vpcCidr, domainTFStateFile string) string {
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(envTfConfigTpl))
@@ -107,7 +121,6 @@ func (i *Infrastructure) envAlbTfConfig(env *environment.Environment, domainTFSt
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(envAlbTfConfigTpl))
 	data := map[string]interface{}{
-		"env_name":            env.Name,
 		"domain_tfstate_path": domainTFStateFile,
 	}
 
