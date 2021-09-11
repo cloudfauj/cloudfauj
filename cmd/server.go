@@ -114,7 +114,7 @@ func setupDataDir(ctx context.Context, log *logrus.Logger, srvCfg *server.Config
 
 	log.WithField("dir", srvCfg.DataDir()).Info("Setting up server data directory")
 	subDirs := []string{
-		srvCfg.DBDir(), srvCfg.DeploymentsDir(), srvCfg.TerraformDir(),
+		srvCfg.DBDir(), srvCfg.DeploymentsDir(), srvCfg.TerraformDomainsDir(),
 	}
 	for _, sd := range subDirs {
 		if err := os.MkdirAll(sd, 0755); err != nil {

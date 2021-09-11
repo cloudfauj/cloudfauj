@@ -8,7 +8,8 @@ import (
 
 const sqlCreateEnvTable = `CREATE TABLE IF NOT EXISTS environments (
 	name VARCHAR(100) NOT NULL PRIMARY KEY,
-	status VARCHAR(25) NOT NULL
+	status VARCHAR(25) NOT NULL,
+	domain VARCHAR(800)
 )`
 
 func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
@@ -24,12 +25,12 @@ func (s *state) CheckEnvExists(ctx context.Context, name string) (bool, error) {
 }
 
 func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environment) error {
-	q := "INSERT INTO environments(name, status) VALUES(?, ?)"
+	q := "INSERT INTO environments(name, status, domain) VALUES(?, ?, ?)"
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(ctx, e.Name, e.Status)
+	_, err = stmt.ExecContext(ctx, e.Name, e.Status, e.Domain)
 	if err != nil {
 		return err
 	}
@@ -37,12 +38,12 @@ func (s *state) CreateEnvironment(ctx context.Context, e *environment.Environmen
 }
 
 func (s *state) UpdateEnvironment(ctx context.Context, e *environment.Environment) error {
-	q := "UPDATE environments SET status = ? WHERE name = ?"
+	q := "UPDATE environments SET status = ?, domain = ? WHERE name = ?"
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(ctx, e.Status, e.Name)
+	_, err = stmt.ExecContext(ctx, e.Status, e.Domain, e.Name)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,9 @@ func (s *state) Environment(ctx context.Context, name string) (*environment.Envi
 
 	err := s.db.QueryRowContext(
 		ctx, "SELECT * FROM environments WHERE name = ?", name,
-	).Scan(&e.Name, &e.Status)
+	).Scan(
+		&e.Name, &e.Status, &e.Domain,
+	)
 	if err != nil {
 		// return nil response without any error if no such env found
 		if err == sql.ErrNoRows {

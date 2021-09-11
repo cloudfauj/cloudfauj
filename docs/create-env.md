@@ -20,7 +20,7 @@ Cloudfauj is not responsible for any costs you incur while following this guide.
 To be able to create infrastructure, you need an **AWS Account**. Cloudfauj server should already be able to make requests to this account (see [permissions required](./getting-started.md#iam-permissions)).
 
 ## Create
-The `env create` command lets you create a new environment. You need to supply a configuration file for this env. As of today, this file is very minimal and only specifies the env's name. Below is an example, let's call it `cf-env-staging.yml`:
+The `env create` command lets you create a new environment. You need to supply a configuration file for this env. Below is an example, let's call it `cf-env-staging.yml`:
 
 ```yaml
 ---

@@ -45,6 +45,7 @@ func setupV1Routes(s *server) {
 	r.HandleFunc("/health", s.handlerGetHealthcheck).Methods(http.MethodGet)
 	r.HandleFunc("/environments", s.handlerListEnvironments).Methods(http.MethodGet)
 	r.HandleFunc("/deployments", s.handlerListDeployments).Methods(http.MethodGet)
+	r.HandleFunc("/domains", s.handlerListDomains).Methods(http.MethodGet)
 
 	appR := r.PathPrefix("/app").Subrouter()
 	appR.HandleFunc("/{name}", s.handlerDestroyApp).Methods(http.MethodDelete)
@@ -57,6 +58,10 @@ func setupV1Routes(s *server) {
 	envR := r.PathPrefix("/environment").Subrouter()
 	envR.HandleFunc("/create", s.handlerCreateEnv)
 	envR.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
+
+	domainR := r.PathPrefix("/domain").Subrouter()
+	domainR.HandleFunc("/{name}/add", s.handlerAddDomain)
+	domainR.HandleFunc("/{name}/delete", s.handlerDeleteDomain)
 }
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {
