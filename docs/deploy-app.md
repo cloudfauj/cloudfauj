@@ -66,7 +66,7 @@ $ cloudfauj deploy --env staging xxxxxxxxxxxx.dkr.ecr.ap-south-1.amazonaws.com/d
 
 ![Create application](./assets/create-app.gif)
 
-Once deployed, you can get the IP of the app from ECS dashboard, then access it from your browser. In future, Cloudfauj will also support custom domains with automatic TLS so you don't have to work with IPs directly.
+Once deployed, you can get the IP of the app from ECS dashboard, then access it from your browser. If you want to assign a custom URL to the app using a domain you own, see [Custom Domains](./advanced-concepts.md#custom-domains).
 
 Subsequent deployments automatically change the infra based on updated requirements in the app config.
 

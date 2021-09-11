@@ -41,6 +41,8 @@ Cloudfauj is under active development. We do not recommend it for production env
     2. [Configuration](./docs/deploy-app.md#configuration)
     3. [Deploy](./docs/deploy-app.md#deploy)
     4. [Destroy](./docs/deploy-app.md#destroy)
+5. [Advanced Concepts](./docs/advanced-concepts.md)
+    1. [Custom Domains](./docs/advanced-concepts.md#custom-domains)
 
 ## License
 MPL-2.0

@@ -96,10 +96,7 @@ func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Before proceeding with destruction, do we want to check if
-	//  the infra is being relied on? eg- is the ACM cert being used by
-	//  any load balancer?
-
+	// TODO: Abort if domain being used by any environments
 	conn.sendTextMsg("Destroying Terraform infrastructure")
 
 	tf, err := s.infra.NewTerraform(s.domainTFDir(name))
