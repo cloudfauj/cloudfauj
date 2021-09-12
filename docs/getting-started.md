@@ -38,8 +38,11 @@ The following IAM policy must be granted to the server's credentials:
               "Effect": "Allow",
               "Action": [
                   "ec2:*",
+                  "elasticloadbalancing:*",
                   "iam:*",
-                  "ecs:*"
+                  "ecs:*",
+                  "route53:*",
+                  "acm:*"
               ],
               "Resource": ["*"]
           }
