@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -19,10 +20,23 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	defer wsConn.Close()
 	conn := wsManager{wsConn}
 
-	name := mux.Vars(r)["name"]
-	exists, err := s.state.CheckDomainExists(r.Context(), name)
+	var d *domain.Domain
+	if err := conn.ReadJSON(&d); err != nil {
+		s.log.Errorf("Failed to read domain config: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	if err := d.CheckIsValid(); err != nil {
+		conn.sendFailure(
+			fmt.Sprintf("Invalid domain configuration: %v", err),
+			websocket.CloseInvalidFramePayloadData,
+		)
+		return
+	}
+
+	exists, err := s.state.CheckDomainExists(r.Context(), d.Name)
 	if err != nil {
-		s.log.WithField("name", name).Errorf("Failed to check if domain exists: %v", err)
+		s.log.WithField("name", d.Name).Errorf("Failed to check if domain exists: %v", err)
 		conn.sendFailureISE()
 		return
 	}
@@ -31,21 +45,21 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn.sendTextMsg(fmt.Sprintf("Registering %s in state", name))
-	if err := s.state.AddDomain(r.Context(), name); err != nil {
-		s.log.WithField("name", name).Errorf("Failed to add domain to state: %v", err)
+	conn.sendTextMsg(fmt.Sprintf("Registering %s in state", d.Name))
+	if err := s.state.AddDomain(r.Context(), d); err != nil {
+		s.log.WithField("name", d.Name).Errorf("Failed to add domain to state: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
 	conn.sendTextMsg("Setting up Terraform configuration")
 
-	if err := os.Mkdir(s.domainTFDir(name), 0755); err != nil {
+	if err := os.Mkdir(s.domainTFDir(d.Name), 0755); err != nil {
 		s.log.Errorf("Failed to create directory for domain: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-	f, err := os.OpenFile(s.domainTFFile(name), os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(s.domainTFFile(d.Name), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		s.log.Errorf("Failed to create Terraform config file for domain: %v", err)
 		conn.sendFailureISE()
@@ -53,7 +67,7 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
-	tf, err := s.infra.NewTerraform(s.domainTFDir(name))
+	tf, err := s.infra.NewTerraform(s.domainTFDir(d.Name))
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
@@ -61,14 +75,14 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.sendTextMsg("Applying Terraform configuration")
-	nsRecords, err := s.infra.CreateDomain(r.Context(), name, tf, f)
+	nsRecords, err := s.infra.CreateDomain(r.Context(), d, tf, f)
 	if err != nil {
 		s.log.Errorf("Failed to provision domain infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	conn.sendTextMsg("NS Records to be configured for " + name)
+	conn.sendTextMsg("NS Records to be configured for " + d.Name)
 	for _, r := range nsRecords {
 		conn.sendTextMsg(r)
 	}

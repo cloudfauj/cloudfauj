@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"os"
 	"strings"
@@ -36,11 +37,11 @@ output "apex_domain" {
 // CreateDomain creates infrastructure to manage a domain.
 // It returns the Name Server records of the DNS hosted zone.
 func (i *Infrastructure) CreateDomain(
-	ctx context.Context, name string, tf *tfexec.Terraform, tfFile *os.File,
+	ctx context.Context, d *domain.Domain, tf *tfexec.Terraform, tfFile *os.File,
 ) ([]string, error) {
 	var nsRecords []string
 
-	conf := i.domainTFConfig(name)
+	conf := i.domainTFConfig(d.Name)
 	if _, err := tfFile.Write([]byte(conf)); err != nil {
 		return nil, fmt.Errorf("failed to write Terraform configuration to file: %v", err)
 	}

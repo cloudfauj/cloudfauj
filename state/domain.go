@@ -3,17 +3,22 @@ package state
 import (
 	"context"
 	"database/sql"
+	"github.com/cloudfauj/cloudfauj/domain"
 )
 
-const sqlCreateDomainTable = "CREATE TABLE IF NOT EXISTS domains (name VARCHAR(800) PRIMARY KEY)"
+const sqlCreateDomainTable = `CREATE TABLE IF NOT EXISTS domains (
+	name VARCHAR(800) PRIMARY KEY,
+	dns_service VARCHAR(100) NOT NULL,
+	certificate_authority VARCHAR(200) NOT NULL
+)`
 
-func (s *state) AddDomain(ctx context.Context, name string) error {
-	q := "INSERT INTO domains VALUES(?)"
+func (s *state) AddDomain(ctx context.Context, d *domain.Domain) error {
+	q := "INSERT INTO domains VALUES(?, ?, ?)"
 	stmt, err := s.db.PrepareContext(ctx, q)
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(ctx, name)
+	_, err = stmt.ExecContext(ctx, d.Name, d.DNSService, d.CertificateAuthority)
 	return err
 }
 

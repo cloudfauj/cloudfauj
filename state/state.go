@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/cloudfauj/cloudfauj/application"
 	"github.com/cloudfauj/cloudfauj/deployment"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/sirupsen/logrus"
 )
@@ -34,7 +35,7 @@ type State interface {
 	App(context.Context, string, string) (*application.Application, error)
 	DeleteApp(context.Context, string, string) error
 
-	AddDomain(context.Context, string) error
+	AddDomain(context.Context, *domain.Domain) error
 	CheckDomainExists(context.Context, string) (bool, error)
 	DeleteDomain(context.Context, string) error
 	ListDomains(context.Context) ([]string, error)

@@ -3,12 +3,14 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/cloudfauj/cloudfauj/server"
 	"net/http"
 )
 
-func (a *API) AddDomain(name string) (<-chan *server.Event, error) {
-	return a.makeWebsocketRequest(a.constructWsURL("/domain/"+name+"/add"), nil)
+func (a *API) AddDomain(d *domain.Domain) (<-chan *server.Event, error) {
+	m, _ := json.Marshal(d)
+	return a.makeWebsocketRequest(a.constructWsURL("/domain/add"), m)
 }
 
 func (a *API) DeleteDomain(name string) (<-chan *server.Event, error) {
