@@ -102,7 +102,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.sendTextMsg("Applying Terraform configuration")
-	// TODO: Is there a more idomatic way than to supply domain tf state file?
+	// TODO: Is there a more idiomatic way than to supply domain tf state file?
 	err = s.infra.CreateEnvironment(r.Context(), env, s.domainTFStateFile(env.Domain), tf, f)
 	if err != nil {
 		s.log.Errorf("Failed to provision environment: %v", err)
@@ -111,7 +111,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env.Status = environment.StatusProvisioned
-	if err := s.state.UpdateEnvironment(r.Context(), env); err != nil {
+	if err := s.state.UpdateEnvStatus(r.Context(), env.Name, env.Status); err != nil {
 		s.log.Errorf("Failed to update env info in state: %v", err)
 		conn.sendFailureISE()
 		return
@@ -163,7 +163,7 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	s.log.WithField("name", envName).Info("Destroying environment")
 
 	env.Status = environment.StatusDestroying
-	if err := s.state.UpdateEnvironment(r.Context(), env); err != nil {
+	if err := s.state.UpdateEnvStatus(r.Context(), env.Name, env.Status); err != nil {
 		s.log.Errorf("Failed to update env status: %v", err)
 		conn.sendFailureISE()
 		return

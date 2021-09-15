@@ -67,11 +67,12 @@ You can add as many domains to cloudfauj as you like.
 ### Create a domain-enabled environment
 You must [create a new environment](./create-env.md) to use the added domain.
 
-Specify the domain in your environment's configuration file:
+Specify the domain configurations in your environment's config file:
 
 ```yaml
 name: staging
 domain: example.com
+load_balancer: aws_alb
 ```
 
 Once this env is up, all public apps deployed in it will automatically receive a TLS-enabled URL!
