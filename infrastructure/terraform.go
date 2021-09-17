@@ -20,6 +20,12 @@ const tfCoreConfigTpl = `terraform {
 
 provider "aws" {
   region = "{{.aws_region}}"
+}
+
+locals {
+  common_tags = {
+    manager = "cloudfauj"
+  }
 }`
 
 func (i *Infrastructure) NewTerraform(workDir string) (*tfexec.Terraform, error) {
