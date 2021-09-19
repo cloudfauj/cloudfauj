@@ -7,6 +7,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"os"
+	"path"
 )
 
 const ApiV1Prefix = "/v1"
@@ -66,4 +68,17 @@ func setupV1Routes(s *server) {
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+// writeFiles writes a set of files inside a target directory.
+// It takes files as input - a map with filenames as keys and
+// their respective contents as values.
+func (s *server) writeFiles(dir string, files map[string]string) error {
+	for fName, data := range files {
+		filepath := path.Join(dir, fName)
+		if err := os.WriteFile(filepath, []byte(data), 0666); err != nil {
+			return err
+		}
+	}
+	return nil
 }

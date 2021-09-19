@@ -80,30 +80,35 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.sendTextMsg("Registered in state")
+	conn.sendTextMsg("Generating Terraform configuration")
 
-	if err := os.Mkdir(s.envTfDir(env.Name), 0755); err != nil {
+	tfConfigs, err := s.infra.EnvTFConfig(r.Context(), env, s.domainTFStateFile(env.Domain))
+	if err != nil {
+		s.log.Errorf("Failed to generate terraform configurations for env: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	dir := s.envTfDir(env.Name)
+	if err := os.Mkdir(dir, 0755); err != nil {
 		s.log.Errorf("Failed to create directory for env: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-	f, err := os.OpenFile(s.envTfFile(env.Name), os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		s.log.Errorf("Failed to create Terraform config file for env: %v", err)
+	if err := s.writeFiles(dir, tfConfigs); err != nil {
+		s.log.Errorf("Failed to write terraform configs for environment: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-	defer f.Close()
 
-	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name))
+	conn.sendTextMsg("Provisioning infrastructure")
+
+	tf, err := s.infra.NewTerraform(dir)
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
 		return
 	}
-
-	conn.sendTextMsg("Applying Terraform configuration")
-	// TODO: Is there a more idiomatic way than to supply domain tf state file?
-	err = s.infra.CreateEnvironment(r.Context(), env, s.domainTFStateFile(env.Domain), tf, f)
+	err = s.infra.CreateEnvironment(r.Context(), tf)
 	if err != nil {
 		s.log.Errorf("Failed to provision environment: %v", err)
 		conn.sendFailureISE()

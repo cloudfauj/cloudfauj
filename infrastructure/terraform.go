@@ -9,25 +9,6 @@ import (
 
 const terraformAwsProviderVersion = "3.55.0"
 
-const tfCoreConfigTpl = `terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "{{.aws_provider_version}}"
-    }
-  }
-}
-
-provider "aws" {
-  region = "{{.aws_region}}"
-}
-
-locals {
-  common_tags = {
-    manager = "cloudfauj"
-  }
-}`
-
 func (i *Infrastructure) NewTerraform(workDir string) (*tfexec.Terraform, error) {
 	tf, err := tfexec.NewTerraform(workDir, i.TFBinary)
 	if err != nil {

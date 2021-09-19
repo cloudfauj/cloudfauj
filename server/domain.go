@@ -69,16 +69,10 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 		conn.sendFailureISE()
 		return
 	}
-	for fName, data := range tfConfigs {
-		filepath := path.Join(s.domainTFDir(d.Name), fName)
-		if err := os.WriteFile(filepath, []byte(data), 0666); err != nil {
-			s.log.WithField(
-				"filepath", filepath,
-			).Errorf("Failed to write terraform config for domain: %v", err)
-
-			conn.sendFailureISE()
-			return
-		}
+	if err := s.writeFiles(dir, tfConfigs); err != nil {
+		s.log.Errorf("Failed to write terraform configs for domain: %v", err)
+		conn.sendFailureISE()
+		return
 	}
 
 	conn.sendTextMsg("Provisioning infrastructure")
