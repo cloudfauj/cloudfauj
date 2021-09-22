@@ -177,6 +177,10 @@ output "ecs_task_execution_role_arn" {
 
 output "main_vpc_id" {
   value = aws_vpc.main_vpc.id
+}
+
+output "compute_subnets" {
+  value = [aws_subnet.compute.id]
 }`
 
 const envAlbTfTpl = `resource "aws_security_group" "env_apps_alb" {
@@ -241,4 +245,171 @@ output "apps_alb_name" {
 
 output "main_alb_https_listener" {
   value = aws_alb_listener.env_apps_https.arn
+}`
+
+const appTfTpl = `data "terraform_remote_state" "env" {
+  backend = "local"
+  config = {
+    path = "{{.env_tfstate_file}}"
+  }
+}
+
+# Variables that need to be supplied during invokation
+# Note that these have default empty values only to make TF destroy
+# invokation easier.
+variable "ingress_port" { default = 0 }
+variable "cpu" { default = 256 }
+variable "memory" { default = 512 }
+variable "ecr_image" { default = "" }
+variable "app_health_check_path" { default = "" }
+
+locals {
+  name = "{{.env_name}}-{{.app_name}}"
+}
+
+data "aws_region" "current" {}
+
+# Security group
+resource "aws_security_group" "main_app_sg" {
+  name        = local.name
+  description = "${local.name} application cluster traffic control"
+  vpc_id      = data.terraform_remote_state.env.outputs.main_vpc_id
+  tags        = local.common_tags
+
+  ingress {
+    description = "Application main ingress"
+    from_port   = var.ingress_port
+    to_port     = var.ingress_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Task Definition
+resource "aws_ecs_task_definition" "main_app" {
+  family                   = local.name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  execution_role_arn       = data.terraform_remote_state.env.outputs.ecs_task_execution_role_arn
+  cpu                      = var.cpu
+  memory                   = var.memory
+
+  container_definitions = jsonencode([
+    {
+      name  = "{{.app_name}}"
+      image = var.ecr_image
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-create-group"  = "true"
+          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-group"         = "{{.env_name}}"
+          "awslogs-stream-prefix" = "{{.app_name}}"
+        }
+      }
+
+      essential    = true
+      portMappings = [{ containerPort = tonumber(var.ingress_port) }]
+    }
+  ])
+}
+
+# ECS Service
+resource "aws_ecs_service" "main_app" {
+  name                = "{{.app_name}}"
+  cluster             = data.terraform_remote_state.env.outputs.compute_ecs_cluster_arn
+  desired_count       = 1
+  launch_type         = "FARGATE"
+  task_definition     = aws_ecs_task_definition.main_app.arn
+  scheduling_strategy = "REPLICA"
+
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  network_configuration {
+    subnets          = data.terraform_remote_state.env.outputs.compute_subnets
+    assign_public_ip = true
+    security_groups  = [aws_security_group.main_app_sg.id]
+  }
+
+  // Only associate Load balancer if target group is supplied.
+  dynamic "load_balancer" {
+    for_each = [{{.target_group_resource}}]
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = "{{.app_name}}"
+      container_port   = var.ingress_port
+    }
+  }
+}
+
+output "ecs_service" {
+  value = aws_ecs_service.main_app.name
+}
+
+output "ecs_cluster_arn" {
+  value = data.terraform_remote_state.env.outputs.compute_ecs_cluster_arn
+}`
+
+const appDnsTfTpl = `data "terraform_remote_state" "domain" {
+  backend = "local"
+  config = {
+    path = "{{.domain_tfstate_file}}"
+  }
+}
+
+locals {
+  app_url = "${local.name}.{{.domain_name}}"
+}
+
+data "aws_lb" "apps_alb" {
+  name = data.terraform_remote_state.env.outputs.apps_alb_name
+}
+
+resource "aws_route53_record" "app_url" {
+  name    = local.app_url
+  type    = "CNAME"
+  zone_id = data.terraform_remote_state.domain.outputs.zone_id
+  ttl     = 60
+  records = [data.aws_lb.apps_alb.dns_name]
+}
+
+resource "aws_alb_target_group" "alb_to_ecs_service" {
+  name        = replace(local.name, "_", "-")
+  vpc_id      = data.terraform_remote_state.env.outputs.main_vpc_id
+  port        = 80
+  protocol    = "HTTP"
+  target_type = "ip"
+  tags        = local.common_tags
+
+  health_check {
+    path = var.app_health_check_path
+  }
+}
+
+resource "aws_lb_listener_rule" "app_router" {
+  listener_arn = data.terraform_remote_state.env.outputs.main_alb_https_listener
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.alb_to_ecs_service.arn
+  }
+  condition {
+    host_header {
+      values = [local.app_url]
+    }
+  }
 }`

@@ -62,15 +62,15 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create app dir inside env dir if it doesn't already exist
-	appDir := s.appTfDir(spec.TargetEnv, spec.App.Name)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	dir := s.appTfDir(spec.TargetEnv, spec.App.Name)
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		s.log.Errorf("Failed to create directory for app: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
 	// create terraform object to run inside app directory
-	tf, err := s.infra.NewTerraform(appDir)
+	tf, err := s.infra.NewTerraform(dir)
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
@@ -85,7 +85,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if app == nil {
-		s.createNewApp(r.Context(), conn, &spec, e, tf)
+		s.createNewApp(r.Context(), conn, &spec, e, tf, dir)
 		return
 	}
 
@@ -99,38 +99,40 @@ func (s *server) createNewApp(
 	spec *deployment.Spec,
 	env *environment.Environment,
 	tf *tfexec.Terraform,
+	dir string,
 ) {
 	s.log.WithFields(
 		logrus.Fields{"name": spec.App.Name, "env": spec.TargetEnv},
 	).Info("Creating new application")
 
-	conn.sendTextMsg("Creating application in this environment for the first time")
-
-	// register new app in state
+	conn.sendTextMsg("Registering application in state")
 	if err := s.state.CreateApp(ctx, spec.App, spec.TargetEnv); err != nil {
 		s.log.Errorf("Failed to create app in state: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	f, err := os.OpenFile(s.appTfFile(spec.TargetEnv, spec.App.Name), os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		s.log.Errorf("Failed to create Terraform config file for app: %v", err)
-		conn.sendFailureISE()
-		return
-	}
-	defer f.Close()
-
-	i := &infrastructure.CreateApplicationInput{
+	i := &infrastructure.AppTFConfigInput{
 		Spec:              spec,
 		Env:               env,
-		Tf:                tf,
-		TfFile:            f,
 		DomainTFStateFile: s.domainTFStateFile(env.Domain),
 		EnvTFStateFile:    s.envTfStateFile(env.Name),
 	}
-	if err := s.infra.CreateApplication(ctx, i); err != nil {
-		s.log.Errorf("Failed to provision application infrastructure: %v", err)
+	tfConfigs, err := s.infra.AppTFConfig(i)
+	if err != nil {
+		s.log.Errorf("Failed to generate terraform configurations for app: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	if err := s.writeFiles(dir, tfConfigs); err != nil {
+		s.log.Errorf("Failed to write terraform configs for app: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
+	conn.sendTextMsg("Provisioning infrastructure")
+	if err := s.infra.CreateApplication(ctx, spec, tf); err != nil {
+		s.log.Errorf("Failed to provision app infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
