@@ -29,6 +29,22 @@ The `env create` command lets you create a new environment. You need to supply a
 # Env name should only contain lowercase alphanumeric characters.
 # Multiple words should be separated by an underscore.
 name: staging
+# The cloud provider to use for all network infrastructure for
+# the environment. Only aws is supported as of now.
+network: aws
+# The container orchestrator to use to run applications.
+# Only aws_ecs_fargate is supported as of now.
+orchestrator: aws_ecs_fargate
+
+# The domain to associate with the environment so apps can
+# receive custom URLs.
+# See Custom Domains under Advanced Concepts.
+#domain: example.com
+
+# The load balancer to use to route traffic to applications.
+# Only needed when domain is enabled for the environment.
+# Only aws_alb is supported for now
+#load_balancer: aws_alb
 ```
 
 Running the command creates several resources for the `staging` environment in your AWS account. Cloudfauj also starts tracking all these resources in its own [internal state](./getting-started.md#configuration).

@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/api"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var domainAddCmd = &cobra.Command{
@@ -24,11 +26,17 @@ var domainAddCmd = &cobra.Command{
 }
 
 func runDomainAddCmd(cmd *cobra.Command, args []string) error {
+	var d *domain.Domain
+
 	apiClient, err := api.NewClient(serverAddr)
 	if err != nil {
 		return err
 	}
-	eventsCh, err := apiClient.AddDomain(args[0])
+
+	initConfig(args[0])
+	_ = viper.Unmarshal(&d)
+
+	eventsCh, err := apiClient.AddDomain(d)
 	if err != nil {
 		return err
 	}

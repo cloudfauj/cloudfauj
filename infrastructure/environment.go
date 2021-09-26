@@ -5,81 +5,30 @@ import (
 	"fmt"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"os"
 	"strings"
 	"text/template"
 )
 
-const envTfConfigTpl = `{{.tf_core_config}}
-
-module "main_env" {
-  source              = "github.com/cloudfauj/terraform-template.git//env?ref=0dcbb03"
-  env_name            = "{{.env_name}}"
-  main_vpc_cidr_block = "{{.main_vpc_cidr}}"
-}
-
-output "ecs_cluster_arn" {
-  value = module.main_env.compute_ecs_cluster_arn
-}
-
-output "main_vpc_id" {
-  value = module.main_env.main_vpc_id
-}
-
-output "compute_subnets" {
-  value = module.main_env.compute_subnets
-}
-
-output "ecs_task_execution_role_arn" {
-  value = module.main_env.ecs_task_execution_role_arn
-}
-
-output "name" {
-  value = module.main_env.name
-}
-
-{{.alb_module}}`
-
-const envAlbTfConfigTpl = `data "terraform_remote_state" "domain" {
-  backend = "local"
-
-  config = {
-    path = "{{.domain_tfstate_path}}"
-  }
-}
-
-module "apps_load_balancer" {
-  source              = "github.com/cloudfauj/terraform-template.git//env/load_balancer?ref=0dcbb03"
-  env_name            = module.main_env.name
-  vpc_id              = module.main_env.main_vpc_id
-  acm_certificate_arn = data.terraform_remote_state.domain.outputs.ssl_cert_arn
-  alb_subnets         = module.main_env.alb_subnets
-}
-
-output "apps_alb_name" {
-  value = module.apps_load_balancer.apps_alb_name
-}
-
-output "main_alb_https_listener" {
-  value = module.apps_load_balancer.main_alb_https_listener
-}`
-
-func (i *Infrastructure) CreateEnvironment(
-	ctx context.Context,
-	env *environment.Environment,
-	domainTfStateFile string,
-	tf *tfexec.Terraform,
-	tfFile *os.File,
-) error {
+func (i *Infrastructure) EnvTFConfig(
+	ctx context.Context, e *environment.Environment, dsf string,
+) (map[string]string, error) {
 	cidr, err := i.nextAvailableCIDR(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to compute VPC CIDR: %v", err)
+		return nil, fmt.Errorf("failed to compute VPC CIDR: %v", err)
 	}
+	res := map[string]string{
+		"terraform.tf":    i.tfCoreConfig(),
+		"network.tf":      i.envTfConfig(envNetworkTfTpl, e.Name, cidr),
+		"orchestrator.tf": fmt.Sprintf(envOrchestratorTfTpl, e.Name),
+	}
+	if e.DomainEnabled() {
+		res["domain.tf"] = fmt.Sprintf(envDomainStateTfTpl, dsf)
+		res["load_balancer.tf"] = i.envTfConfig(envAlbTfTpl, e.Name, cidr)
+	}
+	return res, nil
+}
 
-	envConf := i.envTfConfig(env, cidr, domainTfStateFile)
-	if _, err := tfFile.Write([]byte(envConf)); err != nil {
-		return fmt.Errorf("failed to write Terraform configuration to file: %v", err)
-	}
+func (i *Infrastructure) CreateEnvironment(ctx context.Context, tf *tfexec.Terraform) error {
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("failed to initialize terraform: %v", err)
 	}
@@ -99,30 +48,10 @@ func (i *Infrastructure) DestroyEnvironment(ctx context.Context, tf *tfexec.Terr
 	return nil
 }
 
-func (i *Infrastructure) envTfConfig(env *environment.Environment, vpcCidr, domainTFStateFile string) string {
+func (i *Infrastructure) envTfConfig(tpl, env, cidr string) string {
 	var b strings.Builder
-	t := template.Must(template.New("").Parse(envTfConfigTpl))
-	data := map[string]interface{}{
-		"tf_core_config": i.tfCoreConfig(),
-		"env_name":       env.Name,
-		"main_vpc_cidr":  vpcCidr,
-		"alb_module":     i.envAlbTfConfig(env, domainTFStateFile),
-	}
-
-	t.Execute(&b, data)
-	return b.String()
-}
-
-func (i *Infrastructure) envAlbTfConfig(env *environment.Environment, domainTFStateFile string) string {
-	if !env.DomainEnabled() {
-		return ""
-	}
-
-	var b strings.Builder
-	t := template.Must(template.New("").Parse(envAlbTfConfigTpl))
-	data := map[string]interface{}{
-		"domain_tfstate_path": domainTFStateFile,
-	}
+	t := template.Must(template.New("").Parse(tpl))
+	data := map[string]interface{}{"env_name": env, "vpc_cidr": cidr}
 
 	t.Execute(&b, data)
 	return b.String()

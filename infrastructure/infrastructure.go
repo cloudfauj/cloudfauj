@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Interacts with AWS to provision and manage infrastructure resources.
+// Interacts with AWS and Terraform to provision and manage infrastructure resources.
 type Infrastructure struct {
 	Log      *logrus.Logger
 	Region   string

@@ -17,7 +17,7 @@ This format is currently enforced by the system. In future, you'd be able to spe
 Assuming that you own `example.com` and you want to use it, add the domain to the system:
 
 ```bash
-$ cloudfauj domain add example.com
+$ cloudfauj domain add example.com.yml
 Registering example.com in state
 Setting up Terraform configuration
 Applying Terraform configuration
@@ -27,6 +27,19 @@ ns-2049.awsdns-65.net
 ns-2050.awsdns-66.org
 ns-2051.awsdns-67.co.uk
 Domain infrastructure created successfully
+```
+
+Below is an example configuration file for your domain - `example.com.yml`
+
+```yaml
+# Apex domain name
+name: example.com
+# The service cloudfauj will use to manage all DNS records for the domain.
+# Only "aws_route53" is supported for now.
+dns_service: aws_route53
+# The certificate authority to provision TLS certificates from.
+# Only "aws_acm" is supported for now.
+cert_authority: aws_acm
 ```
 
 This command creates a [Route53 public hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html) and requests TLS certificates from [ACM](https://aws.amazon.com/certificate-manager/) for the domain. (In future, Cloudfauj will support more DNS services like Cloudflare & Certificate authorities such as LetsEncrypt)
@@ -54,11 +67,12 @@ You can add as many domains to cloudfauj as you like.
 ### Create a domain-enabled environment
 You must [create a new environment](./create-env.md) to use the added domain.
 
-Specify the domain in your environment's configuration file:
+Specify the domain configurations in your environment's config file:
 
 ```yaml
 name: staging
 domain: example.com
+load_balancer: aws_alb
 ```
 
 Once this env is up, all public apps deployed in it will automatically receive a TLS-enabled URL!

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfauj/cloudfauj/domain"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -19,10 +20,23 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	defer wsConn.Close()
 	conn := wsManager{wsConn}
 
-	name := mux.Vars(r)["name"]
-	exists, err := s.state.CheckDomainExists(r.Context(), name)
+	var d *domain.Domain
+	if err := conn.ReadJSON(&d); err != nil {
+		s.log.Errorf("Failed to read domain config: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+	if err := d.CheckIsValid(); err != nil {
+		conn.sendFailure(
+			fmt.Sprintf("Invalid domain configuration: %v", err),
+			websocket.CloseInvalidFramePayloadData,
+		)
+		return
+	}
+
+	exists, err := s.state.CheckDomainExists(r.Context(), d.Name)
 	if err != nil {
-		s.log.WithField("name", name).Errorf("Failed to check if domain exists: %v", err)
+		s.log.WithField("name", d.Name).Errorf("Failed to check if domain exists: %v", err)
 		conn.sendFailureISE()
 		return
 	}
@@ -31,47 +45,57 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn.sendTextMsg(fmt.Sprintf("Registering %s in state", name))
-	if err := s.state.AddDomain(r.Context(), name); err != nil {
-		s.log.WithField("name", name).Errorf("Failed to add domain to state: %v", err)
+	conn.sendTextMsg(fmt.Sprintf("Registering %s in state", d.Name))
+	if err := s.state.AddDomain(r.Context(), d); err != nil {
+		s.log.WithField("name", d.Name).Errorf("Failed to add domain to state: %v", err)
 		conn.sendFailureISE()
 		return
 	}
 
-	conn.sendTextMsg("Setting up Terraform configuration")
+	conn.sendTextMsg("Generating Terraform configuration")
 
-	if err := os.Mkdir(s.domainTFDir(name), 0755); err != nil {
+	// Get the terraform config filenames and their contents
+	tfConfigs, err := s.infra.DomainTFConfig(d)
+	if err != nil {
+		s.log.Errorf("Failed to generate terraform configurations for domain: %v", err)
+		conn.sendFailureISE()
+		return
+	}
+
+	// Create the domain terraform module on disk
+	dir := s.domainTFDir(d.Name)
+	if err := os.Mkdir(dir, 0755); err != nil {
 		s.log.Errorf("Failed to create directory for domain: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-	f, err := os.OpenFile(s.domainTFFile(name), os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		s.log.Errorf("Failed to create Terraform config file for domain: %v", err)
+	if err := s.writeFiles(dir, tfConfigs); err != nil {
+		s.log.Errorf("Failed to write terraform configs for domain: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-	defer f.Close()
 
-	tf, err := s.infra.NewTerraform(s.domainTFDir(name))
+	conn.sendTextMsg("Provisioning infrastructure")
+
+	// Provision domain infrastructure by invoking terraform
+	tf, err := s.infra.NewTerraform(dir)
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
 		return
 	}
 
-	conn.sendTextMsg("Applying Terraform configuration")
-	nsRecords, err := s.infra.CreateDomain(r.Context(), name, tf, f)
+	nsRecords, err := s.infra.CreateDomain(r.Context(), tf)
 	if err != nil {
 		s.log.Errorf("Failed to provision domain infrastructure: %v", err)
 		conn.sendFailureISE()
 		return
 	}
-
-	conn.sendTextMsg("NS Records to be configured for " + name)
+	conn.sendTextMsg("NS Records to be configured for " + d.Name)
 	for _, r := range nsRecords {
 		conn.sendTextMsg(r)
 	}
+
 	conn.sendSuccess("Domain infrastructure created successfully")
 }
 
@@ -97,9 +121,10 @@ func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Abort if domain being used by any environments
-	conn.sendTextMsg("Destroying Terraform infrastructure")
+	conn.sendTextMsg("Destroying infrastructure")
 
-	tf, err := s.infra.NewTerraform(s.domainTFDir(name))
+	dir := s.domainTFDir(name)
+	tf, err := s.infra.NewTerraform(dir)
 	if err != nil {
 		s.log.Error(err)
 		conn.sendFailureISE()
@@ -110,7 +135,7 @@ func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		conn.sendFailureISE()
 		return
 	}
-	if err := os.RemoveAll(s.domainTFDir(name)); err != nil {
+	if err := os.RemoveAll(dir); err != nil {
 		s.log.Errorf("Failed to delete domain TF config from disk: %v", err)
 		conn.sendFailureISE()
 		return
@@ -141,10 +166,6 @@ func (s *server) handlerListDomains(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) domainTFDir(name string) string {
 	return path.Join(s.config.TerraformDomainsDir(), name)
-}
-
-func (s *server) domainTFFile(name string) string {
-	return path.Join(s.domainTFDir(name), s.config.terraformConfigFile)
 }
 
 func (s *server) domainTFStateFile(name string) string {

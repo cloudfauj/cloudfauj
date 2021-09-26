@@ -11,10 +11,19 @@ const (
 	StatusDestroying   = "destroying"
 )
 
+const NetworkAWS = "aws"
+const OrchFargate = "aws_ecs_fargate"
+const LoadBalALB = "aws_alb"
+
 // A Cloudfauj Environment that can contain applications
 type Environment struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
+	Name         string `json:"name"`
+	Network      string `json:"network"`
+	Orchestrator string `json:"orchestrator"`
+
+	Domain       string `json:"domain"`
+	LoadBalancer string `json:"load_balancer" mapstructure:"load_balancer"`
+
 	Status string `json:"status"`
 }
 
@@ -24,6 +33,15 @@ func (e *Environment) CheckIsValid() error {
 	//  2. Any validations/blacklists to be applied to domain?
 	if len(strings.TrimSpace(e.Name)) == 0 {
 		return errors.New("name cannot be empty")
+	}
+	if e.Network != NetworkAWS {
+		return errors.New("only " + NetworkAWS + " network type is supported for now")
+	}
+	if e.Orchestrator != OrchFargate {
+		return errors.New("only " + OrchFargate + " container orchestrator is supported for now")
+	}
+	if e.DomainEnabled() && e.LoadBalancer != LoadBalALB {
+		return errors.New("only " + LoadBalALB + " load balancer is supported for now")
 	}
 	return nil
 }
