@@ -7,7 +7,7 @@ import (
 )
 
 var envListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "ls",
 	Short: "List all Environments",
 	Long: `
     This command returns a list of all Environments managed by Cloudfauj.`,
