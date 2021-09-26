@@ -49,21 +49,22 @@ func setupV1Routes(s *server) {
 	r.HandleFunc("/deployments", s.handlerListDeployments).Methods(http.MethodGet)
 	r.HandleFunc("/domains", s.handlerListDomains).Methods(http.MethodGet)
 
-	appR := r.PathPrefix("/app").Subrouter()
-	appR.HandleFunc("/{name}", s.handlerDestroyApp).Methods(http.MethodDelete)
-	appR.HandleFunc("/deploy", s.handlerDeployApp)
+	ar := r.PathPrefix("/app").Subrouter()
+	ar.HandleFunc("/{name}", s.handlerDestroyApp).Methods(http.MethodDelete)
+	ar.HandleFunc("/deploy", s.handlerDeployApp)
 
-	depR := r.PathPrefix("/deployment").Subrouter()
-	depR.HandleFunc("/{id}", s.handlerGetDeployment).Methods(http.MethodGet)
-	depR.HandleFunc("/{id}/logs", s.handlerGetDeploymentLogs).Methods(http.MethodGet)
+	dr := r.PathPrefix("/deployment").Subrouter()
+	dr.HandleFunc("/{id}", s.handlerGetDeployment).Methods(http.MethodGet)
+	dr.HandleFunc("/{id}/logs", s.handlerGetDeploymentLogs).Methods(http.MethodGet)
 
-	envR := r.PathPrefix("/environment").Subrouter()
-	envR.HandleFunc("/create", s.handlerCreateEnv)
-	envR.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
+	er := r.PathPrefix("/environment").Subrouter()
+	er.HandleFunc("/create", s.handlerCreateEnv)
+	er.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
 
-	domainR := r.PathPrefix("/domain").Subrouter()
-	domainR.HandleFunc("/add", s.handlerAddDomain)
-	domainR.HandleFunc("/{name}/delete", s.handlerDeleteDomain)
+	dmr := r.PathPrefix("/domain").Subrouter()
+	dmr.HandleFunc("/add", s.handlerAddDomain)
+	dmr.HandleFunc("/{name}/delete", s.handlerDeleteDomain)
+	dmr.HandleFunc("/{name}/plan", s.handlerTFPlanDomain)
 }
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {

@@ -34,3 +34,7 @@ func (a *API) ListDomains() ([]string, error) {
 	}
 	return result, nil
 }
+
+func (a *API) TFPlanDomain(name string) (<-chan *server.Event, error) {
+	return a.makeWebsocketRequest(a.constructWsURL("/domain/"+name+"/plan"), nil)
+}

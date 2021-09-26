@@ -35,3 +35,8 @@ func (a *API) DestroyApp(app, env string) error {
 
 	return fmt.Errorf("server returned %d: %v", res.StatusCode, err)
 }
+
+func (a *API) TFPlanApp(env, app string) (<-chan *server.Event, error) {
+	u := a.constructHttpURL("/app/"+app, qp{"env": env})
+	return a.makeWebsocketRequest(u, nil)
+}

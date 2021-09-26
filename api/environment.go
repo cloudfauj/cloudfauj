@@ -34,3 +34,7 @@ func (a *API) ListEnvironments() ([]string, error) {
 	}
 	return result, nil
 }
+
+func (a *API) TFPlanEnv(name string) (<-chan *server.Event, error) {
+	return a.makeWebsocketRequest(a.constructWsURL("/environment/"+name+"/plan"), nil)
+}
