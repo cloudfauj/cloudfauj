@@ -71,7 +71,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create terraform object to run inside app directory
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
@@ -265,7 +265,8 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 
 	appDir := s.appTfDir(env, app)
 
-	tf, err := s.infra.NewTerraform(appDir)
+	// TODO: Use websocket in this controller and supply connection object below
+	tf, err := s.infra.NewTerraform(appDir, nil)
 	if err != nil {
 		s.log.Errorf("Failed to create terraform object: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

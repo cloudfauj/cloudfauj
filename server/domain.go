@@ -79,7 +79,7 @@ func (s *server) handlerAddDomain(w http.ResponseWriter, r *http.Request) {
 	conn.SendTextMsg("Provisioning infrastructure")
 
 	// Provision domain infrastructure by invoking terraform
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
@@ -125,7 +125,7 @@ func (s *server) handlerDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	conn.SendTextMsg("Destroying infrastructure")
 
 	dir := s.domainTFDir(name)
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
@@ -176,15 +176,12 @@ func (s *server) handlerTFPlanDomain(w http.ResponseWriter, r *http.Request) {
 	conn.SendTextMsg(fmt.Sprintf("Running Terraform Plan over %s infrastructure configuration", name))
 
 	dir := s.domainTFDir(name)
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
 		return
 	}
-	// stream TF output to client over the websocket connection
-	tf.SetStdout(conn)
-	tf.SetStderr(conn)
 
 	// TODO: Recursively plan all other infra modules that are dependent on
 	//  this domain module (eg- environments using this domain).

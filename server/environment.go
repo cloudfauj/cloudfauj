@@ -103,7 +103,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 
 	conn.SendTextMsg("Provisioning infrastructure")
 
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
@@ -175,7 +175,7 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name))
+	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name), conn)
 	if err != nil {
 		s.log.Error(err)
 		conn.SendFailureISE()
