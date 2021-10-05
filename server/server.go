@@ -57,15 +57,20 @@ func setupV1Routes(s *server) {
 	dr.HandleFunc("/{id}", s.handlerGetDeployment).Methods(http.MethodGet)
 	dr.HandleFunc("/{id}/logs", s.handlerGetDeploymentLogs).Methods(http.MethodGet)
 
+	// TODO: refactor & take out the /{name} path since its common
+	//  Also check if we can write a single controller to handle both plan & apply
+	//  since they're same except for TF action.
 	er := r.PathPrefix("/environment").Subrouter()
 	er.HandleFunc("/create", s.handlerCreateEnv)
 	er.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
 	er.HandleFunc("/{name}/plan", s.handlerTFPlanEnv)
+	er.HandleFunc("/{name}/apply", s.handlerTFApplyEnv)
 
 	dmr := r.PathPrefix("/domain").Subrouter()
 	dmr.HandleFunc("/add", s.handlerAddDomain)
 	dmr.HandleFunc("/{name}/delete", s.handlerDeleteDomain)
 	dmr.HandleFunc("/{name}/plan", s.handlerTFPlanDomain)
+	dmr.HandleFunc("/{name}/apply", s.handlerTFApplyDomain)
 }
 
 func (s *server) handlerGetHealthcheck(w http.ResponseWriter, r *http.Request) {

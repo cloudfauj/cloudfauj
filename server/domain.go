@@ -193,6 +193,47 @@ func (s *server) handlerTFPlanDomain(w http.ResponseWriter, r *http.Request) {
 	conn.SendSuccess("Done")
 }
 
+func (s *server) handlerTFApplyDomain(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := &wsmanager.WSManager{Conn: wsConn}
+
+	name := mux.Vars(r)["name"]
+	exists, err := s.state.CheckDomainExists(r.Context(), name)
+	if err != nil {
+		s.log.WithField("name", name).Errorf("Failed to check if domain exists: %v", err)
+		conn.SendFailureISE()
+		return
+	}
+	if !exists {
+		conn.SendSuccess("Domain doesn't exist, nothing to do")
+		return
+	}
+
+	s.log.WithField("domain", name).Info("Applying Terraform configuration")
+
+	dir := s.domainTFDir(name)
+	tf, err := s.infra.NewTerraform(dir, conn)
+	if err != nil {
+		s.log.Error(err)
+		conn.SendFailureISE()
+		return
+	}
+
+	// TODO: Recursively apply all other infra modules that are dependent on
+	//  this domain module (eg- environments using this domain).
+	if err := s.infra.ApplyDomain(r.Context(), tf); err != nil {
+		s.log.Errorf("Failed to apply domain infrastructure config: %v", err)
+		conn.SendFailureISE()
+		return
+	}
+	conn.SendSuccess("Done")
+}
+
 func (s *server) handlerListDomains(w http.ResponseWriter, r *http.Request) {
 	res, err := s.state.ListDomains(r.Context())
 	if err != nil {

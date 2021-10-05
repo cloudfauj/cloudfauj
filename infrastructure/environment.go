@@ -52,6 +52,10 @@ func (i *Infrastructure) PlanEnv(ctx context.Context, tf *tfexec.Terraform) (boo
 	return tf.Plan(ctx)
 }
 
+func (i *Infrastructure) ApplyEnv(ctx context.Context, tf *tfexec.Terraform) error {
+	return tf.Apply(ctx)
+}
+
 func (i *Infrastructure) envTfConfig(tpl, env, cidr string) string {
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(tpl))

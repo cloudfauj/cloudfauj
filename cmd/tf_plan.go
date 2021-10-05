@@ -29,7 +29,7 @@ var tfPlanCmd = &cobra.Command{
 
     NOTE: This feature currently has a limitation.
     It only plans the component specified and not its dependent infrastructure
-    which may reside as a separate TF project.
+    which may reside as separate TF projects.
 
     For eg- Running plan over a domain shows the diff for it, but not for the
     environment(s) relying on it. If some change in the domain config affects

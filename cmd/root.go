@@ -31,7 +31,7 @@ func init() {
 	envCmd.AddCommand(envCreateCmd, envDestroyCmd, envListCmd)
 	deploymentCmd.AddCommand(deploymentInfoCmd, deploymentLogsCmd, deploymentListCmd)
 	domainCmd.AddCommand(domainAddCmd, domainDeleteCmd, domainListCmd)
-	tfCmd.AddCommand(tfPlanCmd)
+	tfCmd.AddCommand(tfPlanCmd, tfApplyCmd)
 
 	rootCmd.PersistentFlags().StringVar(
 		&serverAddr,
