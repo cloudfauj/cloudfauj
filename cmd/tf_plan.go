@@ -23,11 +23,9 @@ var tfPlanCmd = &cobra.Command{
 
         cloudfauj tf plan --domain example.com
 
-    Similarly, plans can be generated for an environment or a particular app
-    in it.
+    Similarly, plan can be generated for an environment.
 
         cloudfauj tf plan --env staging
-        cloudfauj tf plan --env staging --app demo_api
 
     NOTE: This feature currently has a limitation.
     It only plans the component specified and not its dependent infrastructure
@@ -35,7 +33,9 @@ var tfPlanCmd = &cobra.Command{
 
     For eg- Running plan over a domain shows the diff for it, but not for the
     environment(s) relying on it. If some change in the domain config affects
-    its dependent envs, a separate plan needs to be run over the envs.`,
+    its dependent envs, a separate plan needs to be run over the envs.
+
+    Note that planning is currently not supported for applications.`,
 	RunE: runTfPlanCmd,
 }
 
@@ -43,7 +43,6 @@ func init() {
 	f := tfPlanCmd.Flags()
 	f.String("domain", "", "A domain registered with Cloudfauj")
 	f.String("env", "", "An environment managed by Cloudfauj")
-	f.String("app", "", "An application managed by Cloudfauj (env must be specified)")
 }
 
 func runTfPlanCmd(cmd *cobra.Command, args []string) error {
@@ -57,16 +56,11 @@ func runTfPlanCmd(cmd *cobra.Command, args []string) error {
 	f := cmd.Flags()
 	domain, _ := f.GetString("domain")
 	env, _ := f.GetString("env")
-	app, _ := f.GetString("app")
 
 	if domain != "" {
 		eventsCh, err = apiClient.TFPlanDomain(domain)
 	} else if env != "" {
-		if app != "" {
-			eventsCh, err = apiClient.TFPlanApp(env, app)
-		} else {
-			eventsCh, err = apiClient.TFPlanEnv(env)
-		}
+		eventsCh, err = apiClient.TFPlanEnv(env)
 	} else {
 		return errors.New("either domain or environment must be passed to this command")
 	}

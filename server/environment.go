@@ -28,7 +28,7 @@ func (s *server) handlerListEnvironments(w http.ResponseWriter, r *http.Request)
 func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		s.log.Errorf("Failed to upgrade wsmanager connection: %v", err)
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
 		return
 	}
 	defer wsConn.Close()
@@ -128,7 +128,7 @@ func (s *server) handlerCreateEnv(w http.ResponseWriter, r *http.Request) {
 func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		s.log.Errorf("Failed to upgrade wsmanager connection: %v", err)
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
 		return
 	}
 	defer wsConn.Close()
@@ -200,6 +200,51 @@ func (s *server) handlerDestroyEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.SendSuccess("Environment destroyed successfully")
+}
+
+func (s *server) handlerTFPlanEnv(w http.ResponseWriter, r *http.Request) {
+	wsConn, err := s.wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		s.log.Errorf("Failed to upgrade websocket connection: %v", err)
+		return
+	}
+	defer wsConn.Close()
+	conn := &wsmanager.WSManager{Conn: wsConn}
+
+	envName := mux.Vars(r)["name"]
+
+	env, err := s.state.Environment(r.Context(), envName)
+	if err != nil {
+		s.log.Errorf("Failed to fetch env: %v", err)
+		conn.SendFailureISE()
+		return
+	}
+	if env == nil {
+		conn.SendFailure("Environment does not exist", websocket.ClosePolicyViolation)
+		return
+	}
+	if env.Status != environment.StatusProvisioned {
+		conn.SendFailure("Environment is not in provisioned state", websocket.ClosePolicyViolation)
+		return
+	}
+
+	s.log.WithField("env", envName).Info("Running Terraform Plan")
+
+	tf, err := s.infra.NewTerraform(s.envTfDir(env.Name), conn)
+	if err != nil {
+		s.log.Error(err)
+		conn.SendFailureISE()
+		return
+	}
+
+	// TODO: Recursively plan all other infra modules that are dependent on
+	//  this env module (eg- apps in this env).
+	if _, err := s.infra.PlanEnv(r.Context(), tf); err != nil {
+		s.log.Errorf("Failed to plan environment infrastructure: %v", err)
+		conn.SendFailureISE()
+		return
+	}
+	conn.SendSuccess("Done")
 }
 
 func (s *server) envTfDir(name string) string {

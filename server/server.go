@@ -60,6 +60,7 @@ func setupV1Routes(s *server) {
 	er := r.PathPrefix("/environment").Subrouter()
 	er.HandleFunc("/create", s.handlerCreateEnv)
 	er.HandleFunc("/{name}/destroy", s.handlerDestroyEnv)
+	er.HandleFunc("/{name}/plan", s.handlerTFPlanEnv)
 
 	dmr := r.PathPrefix("/domain").Subrouter()
 	dmr.HandleFunc("/add", s.handlerAddDomain)

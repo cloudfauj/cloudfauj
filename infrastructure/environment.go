@@ -48,6 +48,10 @@ func (i *Infrastructure) DestroyEnvironment(ctx context.Context, tf *tfexec.Terr
 	return nil
 }
 
+func (i *Infrastructure) PlanEnv(ctx context.Context, tf *tfexec.Terraform) (bool, error) {
+	return tf.Plan(ctx)
+}
+
 func (i *Infrastructure) envTfConfig(tpl, env, cidr string) string {
 	var b strings.Builder
 	t := template.Must(template.New("").Parse(tpl))

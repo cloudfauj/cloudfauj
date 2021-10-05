@@ -173,7 +173,7 @@ func (s *server) handlerTFPlanDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn.SendTextMsg(fmt.Sprintf("Running Terraform Plan over %s infrastructure configuration", name))
+	s.log.WithField("domain", name).Info("Running Terraform Plan")
 
 	dir := s.domainTFDir(name)
 	tf, err := s.infra.NewTerraform(dir, conn)
