@@ -3,13 +3,14 @@ package infrastructure
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"io"
 	"strings"
 	"text/template"
 )
 
 const terraformAwsProviderVersion = "3.55.0"
 
-func (i *Infrastructure) NewTerraform(workDir string) (*tfexec.Terraform, error) {
+func (i *Infrastructure) NewTerraform(workDir string, out io.Writer) (*tfexec.Terraform, error) {
 	tf, err := tfexec.NewTerraform(workDir, i.TFBinary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new terraform object: %s", err)
@@ -17,10 +18,15 @@ func (i *Infrastructure) NewTerraform(workDir string) (*tfexec.Terraform, error)
 
 	// Pass the server process' environment variables to Terraform process
 	tf.SetEnv(nil)
-	// Set logging
 	tf.SetLogger(i.Log)
-	tf.SetStderr(i.Log.Out)
-	tf.SetStdout(i.Log.Out)
+
+	// Allow caller to supply a Writer to stream TF output to.
+	// If unspecified, default to logger.
+	if out == nil {
+		out = i.Log.Out
+	}
+	tf.SetStderr(out)
+	tf.SetStdout(out)
 
 	return tf, nil
 }

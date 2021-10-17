@@ -55,6 +55,16 @@ func (i *Infrastructure) DeleteDomain(ctx context.Context, tf *tfexec.Terraform)
 	return tf.Destroy(ctx)
 }
 
+// PlanDomain runs Terraform plan over the domains infra configuration
+func (i *Infrastructure) PlanDomain(ctx context.Context, tf *tfexec.Terraform) (bool, error) {
+	return tf.Plan(ctx)
+}
+
+// ApplyDomain runs Terraform apply over the domains infra configuration
+func (i *Infrastructure) ApplyDomain(ctx context.Context, tf *tfexec.Terraform) error {
+	return tf.Apply(ctx)
+}
+
 func (i *Infrastructure) domainTfConfig(d *domain.Domain, tpl string) string {
 	var b strings.Builder
 

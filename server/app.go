@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfauj/cloudfauj/deployment"
 	"github.com/cloudfauj/cloudfauj/environment"
 	"github.com/cloudfauj/cloudfauj/infrastructure"
+	"github.com/cloudfauj/cloudfauj/wsmanager"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -27,16 +28,16 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer wsConn.Close()
-	conn := &wsManager{wsConn}
+	conn := &wsmanager.WSManager{Conn: wsConn}
 
 	var spec deployment.Spec
 	if err := conn.ReadJSON(&spec); err != nil {
 		s.log.Errorf("Failed to read deployment spec: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	if err := spec.CheckIsValid(); err != nil {
-		conn.sendFailure(
+		conn.SendFailure(
 			fmt.Sprintf("Invalid specification: %v", err),
 			websocket.ClosePolicyViolation,
 		)
@@ -46,15 +47,15 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	e, err := s.state.Environment(r.Context(), spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.TargetEnv).Errorf("Failed to check if target env exists: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	if e == nil {
-		conn.sendFailure("Target environment does not exist", websocket.ClosePolicyViolation)
+		conn.SendFailure("Target environment does not exist", websocket.ClosePolicyViolation)
 		return
 	}
 	if e.Status != environment.StatusProvisioned {
-		conn.sendFailure(
+		conn.SendFailure(
 			"Target environment is not ready to be deployed to",
 			websocket.CloseInternalServerErr,
 		)
@@ -65,15 +66,15 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	dir := s.appTfDir(spec.TargetEnv, spec.App.Name)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		s.log.Errorf("Failed to create directory for app: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
 	// create terraform object to run inside app directory
-	tf, err := s.infra.NewTerraform(dir)
+	tf, err := s.infra.NewTerraform(dir, conn)
 	if err != nil {
 		s.log.Error(err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
@@ -81,7 +82,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 	app, err := s.state.App(r.Context(), spec.App.Name, spec.TargetEnv)
 	if err != nil {
 		s.log.WithField("name", spec.App.Name).Errorf("Failed to get app from state: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	if app == nil {
@@ -95,7 +96,7 @@ func (s *server) handlerDeployApp(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) createNewApp(
 	ctx context.Context,
-	conn *wsManager,
+	conn *wsmanager.WSManager,
 	spec *deployment.Spec,
 	env *environment.Environment,
 	tf *tfexec.Terraform,
@@ -105,10 +106,10 @@ func (s *server) createNewApp(
 		logrus.Fields{"name": spec.App.Name, "env": spec.TargetEnv},
 	).Info("Creating new application")
 
-	conn.sendTextMsg("Registering application in state")
+	conn.SendTextMsg("Registering application in state")
 	if err := s.state.CreateApp(ctx, spec.App, spec.TargetEnv); err != nil {
 		s.log.Errorf("Failed to create app in state: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
@@ -121,19 +122,19 @@ func (s *server) createNewApp(
 	tfConfigs, err := s.infra.AppTFConfig(i)
 	if err != nil {
 		s.log.Errorf("Failed to generate terraform configurations for app: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	if err := s.writeFiles(dir, tfConfigs); err != nil {
 		s.log.Errorf("Failed to write terraform configs for app: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
-	conn.sendTextMsg("Provisioning infrastructure")
+	conn.SendTextMsg("Provisioning infrastructure")
 	if err := s.infra.CreateApplication(ctx, spec, tf); err != nil {
 		s.log.Errorf("Failed to provision app infrastructure: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
@@ -144,27 +145,32 @@ func (s *server) createNewApp(
 	go s.trackDeployment(ctx, cluster, service, eventsCh)
 	for e := range eventsCh {
 		if e.Err != nil {
-			conn.sendFailure(
+			conn.SendFailure(
 				fmt.Sprintf("Deployment failed: %v", e.Err),
 				websocket.CloseInternalServerErr,
 			)
 			return
 		}
-		conn.sendTextMsg(e.Msg)
+		conn.SendTextMsg(e.Msg)
 	}
 
-	conn.sendSuccess("App deployed successfully")
+	conn.SendSuccess("App deployed successfully")
 	return
 }
 
-func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deployment.Spec, tf *tfexec.Terraform) {
+func (s *server) deployApp(
+	ctx context.Context,
+	conn *wsmanager.WSManager,
+	spec *deployment.Spec,
+	tf *tfexec.Terraform,
+) {
 	depLogger := logrus.New()
 	d := deployment.New(spec, depLogger)
 
 	id, err := s.state.CreateDeployment(ctx, d)
 	if err != nil {
 		s.log.WithField("app", spec.App.Name).Errorf("Failed to create deployment: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	d.Id = strconv.FormatInt(id, 10)
@@ -172,7 +178,7 @@ func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deploymen
 	// open deployment log file
 	if err := os.Mkdir(s.deploymentDir(d.Id), 0755); err != nil {
 		s.log.WithField("deployment_id", d.Id).Errorf("Failed to create deployment dir: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	dlf, err := os.OpenFile(s.deploymentLogFile(d.Id), os.O_CREATE|os.O_RDWR, 0666)
@@ -185,7 +191,7 @@ func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deploymen
 	}
 
 	msg := "Deployment ID: " + d.Id
-	conn.sendTextMsg(msg)
+	conn.SendTextMsg(msg)
 	d.Log(msg)
 	s.log.WithFields(
 		logrus.Fields{"name": spec.App.Name, "deployment_id": d.Id},
@@ -194,12 +200,12 @@ func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deploymen
 	if err := s.state.UpdateApp(ctx, spec.App, spec.TargetEnv); err != nil {
 		s.log.Errorf("Failed to update app in state: %v", err)
 		d.Fail(errors.New("a server error occurred while updating app state"))
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 	if err := s.infra.ModifyApplication(ctx, spec, tf); err != nil {
 		s.log.Errorf("Failed to modify application infrastructure: %v", err)
-		conn.sendFailureISE()
+		conn.SendFailureISE()
 		return
 	}
 
@@ -212,19 +218,19 @@ func (s *server) deployApp(ctx context.Context, conn *wsManager, spec *deploymen
 		if e.Err != nil {
 			d.Fail(e.Err)
 			s.state.UpdateDeploymentStatus(ctx, d.Id, d.Status)
-			conn.sendFailure(
+			conn.SendFailure(
 				fmt.Sprintf("Deployment failed: %v", e.Err),
 				websocket.CloseInternalServerErr,
 			)
 			return
 		}
 		d.Log(e.Msg)
-		conn.sendTextMsg(e.Msg)
+		conn.SendTextMsg(e.Msg)
 	}
 
 	d.Succeed()
 	s.state.UpdateDeploymentStatus(ctx, d.Id, d.Status)
-	conn.sendSuccess("Deployed successfully")
+	conn.SendSuccess("Deployed successfully")
 }
 
 func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +265,8 @@ func (s *server) handlerDestroyApp(w http.ResponseWriter, r *http.Request) {
 
 	appDir := s.appTfDir(env, app)
 
-	tf, err := s.infra.NewTerraform(appDir)
+	// TODO: Use websocket in this controller and supply connection object below
+	tf, err := s.infra.NewTerraform(appDir, nil)
 	if err != nil {
 		s.log.Errorf("Failed to create terraform object: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
