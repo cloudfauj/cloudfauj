@@ -43,6 +43,7 @@ Cloudfauj is under active development. We do not recommend it for production env
     4. [Destroy](./docs/deploy-app.md#destroy)
 5. [Advanced Concepts](./docs/advanced-concepts.md)
     1. [Custom Domains](./docs/advanced-concepts.md#custom-domains)
+    2. [Terraform operations](./docs/advanced-concepts.md#terraform-operations)
 
 ## License
 MPL-2.0

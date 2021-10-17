@@ -102,3 +102,14 @@ $ cloudfauj domain delete foobar.com
 Destroying Terraform infrastructure
 Domain deleted successfully
 ```
+
+## Terraform Operations
+Even though Cloudfauj creates and manages your infrastructure, it doesn't limit you from making any custom changes to it. You can make changes to the infrastructure configuration and run Terraform `plan` & `apply` over them using the `tf` CLI command.
+
+```
+$ cloudfauj tf plan --domain example.com
+
+$ cloudfauj tf apply --env staging
+```
+
+See `cloudfauj tf --help` for details.
